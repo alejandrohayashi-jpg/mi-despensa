@@ -207,7 +207,7 @@ function App() {
   const TABS = [
     { id: 'todos', label: '✨ Todos' },
     { id: 'refrigerador', label: '🧊 Refrigerador' },
-    { id: 'closet', label: '🗄️ Closet' },
+    { id: 'closet', label: '🗄️ Despensa' },
   ];
 
   return (
