@@ -217,13 +217,32 @@ useEffect(() => {
   if (cargando) return <div style={{ textAlign: 'center', padding: 60, fontFamily: 'sans-serif', color: '#888' }}>Cargando...</div>;
 
   if (!hogarId) return (
-    <div style={{ textAlign: 'center', padding: 60, fontFamily: 'sans-serif' }}>
-      <div style={{ fontSize: 40 }}>🏠</div>
-      <h2 style={{ fontSize: 18, margin: '16px 0 8px' }}>No estás en ningún hogar</h2>
-      <p style={{ color: '#888', fontSize: 14 }}>Crea uno nuevo o pide un código de invitación</p>
-      <button onClick={() => supabase.auth.signOut()} style={{ marginTop: 16, padding: '10px 20px', border: '1px solid #ddd', borderRadius: 8, background: 'white', cursor: 'pointer' }}>Cerrar sesión</button>
-    </div>
-  );
+  <div style={{ textAlign: 'center', padding: 60, fontFamily: 'sans-serif' }}>
+    <div style={{ fontSize: 40 }}>🏠</div>
+    <h2 style={{ fontSize: 18, margin: '16px 0 8px' }}>No estás en ningún hogar</h2>
+    <p style={{ color: '#888', fontSize: 14, marginBottom: 24 }}>Crea uno nuevo o únete con un código</p>
+    <button onClick={async () => {
+      const nombreHogar = prompt('¿Cómo se llama tu hogar? Ej: Familia García');
+      if (!nombreHogar) return;
+      const codigo = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const { data: hogar } = await supabase.from('hogares').insert([{
+        nombre: nombreHogar,
+        codigo_invitacion: codigo,
+        admin_id: session.user.id
+      }]).select().single();
+      await supabase.from('miembros_hogar').insert([{
+        hogar_id: hogar.id,
+        user_id: session.user.id,
+        rol: 'admin'
+      }]);
+      alert(`✅ Hogar creado. Tu código de invitación es: ${codigo}`);
+      cargarHogar();
+    }} style={{ padding: '12px 24px', border: 'none', borderRadius: 8, background: '#333', color: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 500, marginBottom: 12, display: 'block', width: '100%', maxWidth: 300, margin: '0 auto 12px' }}>
+      🏠 Crear hogar nuevo
+    </button>
+    <button onClick={() => supabase.auth.signOut()} style={{ padding: '10px 20px', border: '1px solid #ddd', borderRadius: 8, background: 'white', cursor: 'pointer', marginTop: 12 }}>Cerrar sesión</button>
+  </div>
+);
 
   const listaBase = tab === 'todos' ? productos : productos.filter(p => p.ubicacion === tab);
   const lista = filtroDestino === 'Todos' ? listaBase : listaBase.filter(p => p.destino === filtroDestino);
