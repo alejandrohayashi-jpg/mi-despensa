@@ -6,31 +6,32 @@ function getEstado(vencimiento) {
   const vence = new Date(vencimiento);
   const dias = Math.ceil((vence - hoy) / (1000 * 60 * 60 * 24));
   if (dias < 0) return { texto: 'Vencido', color: '#A32D2D', bg: '#FCEBEB' };
-  if (dias <= 3) return { texto: 'Pronto', color: '#854F0B', bg: '#FAEEDA' };
+  if (dias <= 5) return { texto: 'Por vencer', color: '#854F0B', bg: '#FAEEDA' };
   return { texto: 'OK', color: '#3B6D11', bg: '#EAF3DE' };
 }
 
-const SECCIONES = [
-  { id: 'refrigerador', label: '🧊 Refrigerador' },
-  { id: 'closet', label: '🗄️ Closet' },
-];
-
 const DESTINOS = ['Casa General', 'Agustín', 'Coco&Milo'];
 
-function ProductoItem({ producto, onEliminar, onEditar }) {
-  const estado = getEstado(producto.vencimiento);
-  const destinoColor = {
-    'Agustín': { bg: '#E6F1FB', color: '#185FA5' },
-    'Coco&Milo': { bg: '#FAEEDA', color: '#854F0B' },
-    'Casa General': { bg: '#EAF3DE', color: '#3B6D11' },
-  }[producto.destino] || { bg: '#f0f0f0', color: '#666' };
+const destinoStyle = {
+  'Agustín': { bg: '#E6F1FB', color: '#185FA5' },
+  'Coco&Milo': { bg: '#FAEEDA', color: '#854F0B' },
+  'Casa General': { bg: '#EAF3DE', color: '#3B6D11' },
+};
 
+function ProductoItem({ producto, onEliminar, onEditar, mostrarUbicacion }) {
+  const estado = getEstado(producto.vencimiento);
+  const dc = destinoStyle[producto.destino] || { bg: '#f0f0f0', color: '#666' };
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'white', border: '1px solid #eee', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
       <div style={{ flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 500, fontSize: 14 }}>{producto.nombre}</span>
-          <span style={{ fontSize: 11, padding: '1px 8px', borderRadius: 20, fontWeight: 500, background: destinoColor.bg, color: destinoColor.color }}>{producto.destino}</span>
+          <span style={{ fontSize: 11, padding: '1px 8px', borderRadius: 20, fontWeight: 500, background: dc.bg, color: dc.color }}>{producto.destino}</span>
+          {mostrarUbicacion && (
+            <span style={{ fontSize: 11, padding: '1px 8px', borderRadius: 20, background: '#f0f0f0', color: '#666' }}>
+              {producto.ubicacion === 'refrigerador' ? '🧊 Refri' : '🗄️ Closet'}
+            </span>
+          )}
         </div>
         <div style={{ fontSize: 12, color: '#888' }}>{producto.categoria} · Vence {producto.vencimiento}</div>
       </div>
@@ -42,15 +43,31 @@ function ProductoItem({ producto, onEliminar, onEditar }) {
   );
 }
 
+function ModalAlerta({ titulo, productos, onCerrar, onEliminar, onEditar }) {
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+      <div style={{ background: 'white', borderRadius: 14, padding: 24, width: '90%', maxWidth: 420, maxHeight: '80vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>{titulo}</h2>
+          <button onClick={onCerrar} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#999' }}>✕</button>
+        </div>
+        {productos.length === 0 ? (
+          <p style={{ color: '#aaa', textAlign: 'center', padding: 20 }}>No hay productos en esta categoría</p>
+        ) : (
+          productos.map(p => <ProductoItem key={p.id} producto={p} onEliminar={onEliminar} onEditar={onEditar} mostrarUbicacion={true} />)
+        )}
+      </div>
+    </div>
+  );
+}
+
 function FormularioProducto({ onGuardar, onCerrar, productoEditar }) {
   const [form, setForm] = useState(
     productoEditar
       ? { ...productoEditar, cantidad: String(productoEditar.cantidad) }
       : { nombre: '', categoria: '', cantidad: '', unidad: 'un.', vencimiento: '', destino: 'Casa General' }
   );
-
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-
   const handleGuardar = () => {
     if (!form.nombre || !form.categoria || !form.cantidad || !form.vencimiento) {
       alert('Por favor completa todos los campos');
@@ -59,10 +76,8 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar }) {
     onGuardar({ ...form, cantidad: Number(form.cantidad) });
     onCerrar();
   };
-
   const inputStyle = { width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, boxSizing: 'border-box', marginTop: 4 };
   const labelStyle = { fontSize: 12, color: '#666', fontWeight: 500 };
-
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
       <div style={{ background: 'white', borderRadius: 14, padding: 24, width: '90%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto' }}>
@@ -136,12 +151,13 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar }) {
 }
 
 function App() {
-  const [tab, setTab] = useState('refrigerador');
+  const [tab, setTab] = useState('todos');
   const [filtroDestino, setFiltroDestino] = useState('Todos');
   const [productos, setProductos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [productoEditar, setProductoEditar] = useState(null);
+  const [modalAlerta, setModalAlerta] = useState(null);
 
   useEffect(() => { cargarProductos(); }, []);
 
@@ -154,10 +170,11 @@ function App() {
   };
 
   const handleGuardar = async (producto) => {
+    const ubicacion = tab === 'todos' ? 'refrigerador' : tab;
     if (productoEditar) {
       await supabase.from('productos').update(producto).eq('id', producto.id);
     } else {
-      await supabase.from('productos').insert([{ ...producto, ubicacion: tab }]);
+      await supabase.from('productos').insert([{ ...producto, ubicacion }]);
     }
     cargarProductos();
   };
@@ -165,11 +182,13 @@ function App() {
   const handleEliminar = async (id) => {
     await supabase.from('productos').delete().eq('id', id);
     cargarProductos();
+    setModalAlerta(null);
   };
 
   const handleEditar = (producto) => {
     setProductoEditar(producto);
     setMostrarFormulario(true);
+    setModalAlerta(null);
   };
 
   const handleCerrar = () => {
@@ -177,11 +196,19 @@ function App() {
     setProductoEditar(null);
   };
 
-  const listaBase = productos.filter(p => p.ubicacion === tab);
+  const listaBase = tab === 'todos' ? productos : productos.filter(p => p.ubicacion === tab);
   const lista = filtroDestino === 'Todos' ? listaBase : listaBase.filter(p => p.destino === filtroDestino);
-  const vencidos = lista.filter(p => getEstado(p.vencimiento).texto === 'Vencido').length;
-  const ok = lista.filter(p => getEstado(p.vencimiento).texto === 'OK').length;
+
+  const vencidos = lista.filter(p => getEstado(p.vencimiento).texto === 'Vencido');
+  const porVencer = lista.filter(p => getEstado(p.vencimiento).texto === 'Por vencer');
+  const ok = lista.filter(p => getEstado(p.vencimiento).texto === 'OK');
   const categorias = [...new Set(lista.map(p => p.categoria))];
+
+  const TABS = [
+    { id: 'todos', label: '✨ Todos' },
+    { id: 'refrigerador', label: '🧊 Refrigerador' },
+    { id: 'closet', label: '🗄️ Closet' },
+  ];
 
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', fontFamily: 'sans-serif', background: '#f5f5f5', minHeight: '100vh' }}>
@@ -190,13 +217,13 @@ function App() {
           <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Coco&Milo House</h1>
           <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>Inventario del hogar</div>
         </div>
-        <span style={{ fontSize: 13, color: '#888' }}>🏠</span>
+        <span style={{ fontSize: 20 }}>🏠</span>
       </div>
 
       <div style={{ display: 'flex', background: 'white', borderBottom: '1px solid #eee' }}>
-        {SECCIONES.map(s => (
-          <button key={s.id} onClick={() => setTab(s.id)} style={{ flex: 1, padding: '10px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: tab === s.id ? 600 : 400, borderBottom: tab === s.id ? '2px solid #333' : '2px solid transparent', fontSize: 14 }}>
-            {s.label}
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, padding: '10px 4px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: tab === t.id ? 600 : 400, borderBottom: tab === t.id ? '2px solid #333' : '2px solid transparent', fontSize: 13 }}>
+            {t.label}
           </button>
         ))}
       </div>
@@ -204,15 +231,22 @@ function App() {
       <div style={{ display: 'flex', gap: 8, padding: '10px 16px', background: 'white', borderBottom: '1px solid #eee', overflowX: 'auto' }}>
         {['Todos', ...DESTINOS].map(d => (
           <button key={d} onClick={() => setFiltroDestino(d)} style={{ padding: '5px 14px', borderRadius: 20, border: filtroDestino === d ? '2px solid #333' : '1px solid #ddd', background: filtroDestino === d ? '#333' : 'white', color: filtroDestino === d ? 'white' : '#666', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: filtroDestino === d ? 600 : 400 }}>
-            {d === 'Coco&Milo' ? '🐾 Coco&Milo' : d === 'Agustín' ? '👶 Agustín' : d === 'Casa General' ? '🏠 Casa General' : '✨ Todos'}
+            {d === 'Coco&Milo' ? '🐾 Coco&Milo' : d === 'Agustín' ? '😊 Agustín' : d === 'Casa General' ? '🏠 Casa General' : '✨ Todos'}
           </button>
         ))}
       </div>
 
       <div style={{ padding: 16 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 16 }}>
-          {[{ num: lista.length, label: 'Productos', color: '#333' }, { num: vencidos, label: 'Vencidos', color: '#A32D2D' }, { num: ok, label: 'En buen estado', color: '#3B6D11' }].map(m => (
-            <div key={m.label} style={{ background: 'white', borderRadius: 10, padding: '12px', textAlign: 'center', border: '1px solid #eee' }}>
+          {[
+            { num: vencidos.length, label: 'Vencidos', color: '#A32D2D', bg: '#FCEBEB', lista: vencidos, titulo: '🔴 Productos vencidos' },
+            { num: porVencer.length, label: 'Por vencer', color: '#854F0B', bg: '#FAEEDA', lista: porVencer, titulo: '🟡 Por vencer pronto' },
+            { num: ok.length, label: 'En buen estado', color: '#3B6D11', bg: '#EAF3DE', lista: ok, titulo: '🟢 En buen estado' },
+          ].map(m => (
+            <div key={m.label} onClick={() => setModalAlerta({ titulo: m.titulo, lista: m.lista })}
+              style={{ background: 'white', borderRadius: 10, padding: '12px', textAlign: 'center', border: `1px solid ${m.num > 0 ? m.color + '44' : '#eee'}`, cursor: 'pointer', transition: 'transform 0.1s' }}
+              onMouseOver={e => e.currentTarget.style.transform = 'scale(1.03)'}
+              onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}>
               <div style={{ fontSize: 22, fontWeight: 600, color: m.color }}>{m.num}</div>
               <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{m.label}</div>
             </div>
@@ -227,7 +261,7 @@ function App() {
               <div key={cat} style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{cat}</div>
                 {lista.filter(p => p.categoria === cat).map(p => (
-                  <ProductoItem key={p.id} producto={p} onEliminar={handleEliminar} onEditar={handleEditar} />
+                  <ProductoItem key={p.id} producto={p} onEliminar={handleEliminar} onEditar={handleEditar} mostrarUbicacion={tab === 'todos'} />
                 ))}
               </div>
             ))}
@@ -241,6 +275,10 @@ function App() {
           + Agregar producto
         </button>
       </div>
+
+      {modalAlerta && (
+        <ModalAlerta titulo={modalAlerta.titulo} productos={modalAlerta.lista} onCerrar={() => setModalAlerta(null)} onEliminar={handleEliminar} onEditar={handleEditar} />
+      )}
 
       {mostrarFormulario && (
         <FormularioProducto onGuardar={handleGuardar} onCerrar={handleCerrar} productoEditar={productoEditar} />
