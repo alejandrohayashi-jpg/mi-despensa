@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import Auth from './Auth';
 
+const EMOJIS = ['🏠','👶','👦','👧','👨','👩','👴','👵','🐶','🐱','🐾','🍎','🥦','🥛','🍗','🛒','⭐','❤️','🌟','🎯'];
+
 function getEstado(vencimiento) {
   const hoy = new Date();
   const vence = new Date(vencimiento);
@@ -11,24 +13,16 @@ function getEstado(vencimiento) {
   return { texto: 'OK', color: '#3B6D11', bg: '#EAF3DE' };
 }
 
-const DESTINOS = ['Casa General', 'Agustín', 'Coco&Milo'];
-const destinoStyle = {
-  'Agustín': { bg: '#E6F1FB', color: '#185FA5' },
-  'Coco&Milo': { bg: '#FAEEDA', color: '#854F0B' },
-  'Casa General': { bg: '#EAF3DE', color: '#3B6D11' },
-};
-
 function ProductoItem({ producto, onEliminar, onEditar, mostrarUbicacion }) {
   const estado = getEstado(producto.vencimiento);
-  const dc = destinoStyle[producto.destino] || { bg: '#f0f0f0', color: '#666' };
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'white', border: '1px solid #eee', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 500, fontSize: 14 }}>{producto.nombre}</span>
-          <span style={{ fontSize: 11, padding: '1px 8px', borderRadius: 20, fontWeight: 500, background: dc.bg, color: dc.color }}>{producto.destino}</span>
+          <span style={{ fontSize: 11, padding: '1px 8px', borderRadius: 20, fontWeight: 500, background: '#f0f0f0', color: '#555' }}>{producto.destino}</span>
           {mostrarUbicacion && (
-            <span style={{ fontSize: 11, padding: '1px 8px', borderRadius: 20, background: '#f0f0f0', color: '#666' }}>
+            <span style={{ fontSize: 11, padding: '1px 8px', borderRadius: 20, background: '#e8e8e8', color: '#666' }}>
               {producto.ubicacion === 'refrigerador' ? '🧊 Refri' : '🗄️ Despensa'}
             </span>
           )}
@@ -61,11 +55,50 @@ function ModalAlerta({ titulo, productos, onCerrar, onEliminar, onEditar }) {
   );
 }
 
-function FormularioProducto({ onGuardar, onCerrar, productoEditar }) {
+function ModalDestino({ hogarId, onCerrar, onGuardado }) {
+  const [nombre, setNombre] = useState('');
+  const [emoji, setEmoji] = useState('🏠');
+
+  const handleGuardar = async () => {
+    if (!nombre) return;
+    await supabase.from('destinos').insert([{ hogar_id: hogarId, nombre, emoji }]);
+    onGuardado();
+    onCerrar();
+  };
+
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+      <div style={{ background: 'white', borderRadius: 14, padding: 24, width: '90%', maxWidth: 380 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Nuevo destino</h2>
+          <button onClick={onCerrar} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#999' }}>✕</button>
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 12, color: '#666', fontWeight: 500, marginBottom: 4 }}>Nombre</div>
+          <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Agustín" style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 12, color: '#666', fontWeight: 500, marginBottom: 8 }}>Elige un emoji</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {EMOJIS.map(e => (
+              <button key={e} onClick={() => setEmoji(e)} style={{ width: 40, height: 40, fontSize: 20, borderRadius: 8, border: emoji === e ? '2px solid #333' : '1px solid #eee', background: emoji === e ? '#f5f5f5' : 'white', cursor: 'pointer' }}>{e}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onCerrar} style={{ flex: 1, padding: '10px', border: '1px solid #ddd', borderRadius: 8, background: 'white', cursor: 'pointer', fontSize: 14 }}>Cancelar</button>
+          <button onClick={handleGuardar} style={{ flex: 1, padding: '10px', border: 'none', borderRadius: 8, background: '#333', color: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>Guardar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos }) {
   const [form, setForm] = useState(
     productoEditar
       ? { ...productoEditar, cantidad: String(productoEditar.cantidad) }
-      : { nombre: '', categoria: '', cantidad: '', unidad: 'un.', vencimiento: '', destino: 'Casa General' }
+      : { nombre: '', categoria: '', cantidad: '', unidad: 'un.', vencimiento: '', destino: destinos[0]?.nombre || 'Casa General' }
   );
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
   const handleGuardar = () => {
@@ -92,10 +125,10 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar }) {
           </div>
           <div>
             <div style={labelStyle}>Para quién es</div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-              {DESTINOS.map(d => (
-                <button key={d} onClick={() => setForm({ ...form, destino: d })} style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: form.destino === d ? '2px solid #333' : '1px solid #ddd', background: form.destino === d ? '#333' : 'white', color: form.destino === d ? 'white' : '#666', fontSize: 12, cursor: 'pointer', fontWeight: form.destino === d ? 600 : 400 }}>
-                  {d}
+            <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+              {destinos.map(d => (
+                <button key={d.id} onClick={() => setForm({ ...form, destino: d.nombre })} style={{ padding: '8px 12px', borderRadius: 8, border: form.destino === d.nombre ? '2px solid #333' : '1px solid #ddd', background: form.destino === d.nombre ? '#333' : 'white', color: form.destino === d.nombre ? 'white' : '#666', fontSize: 12, cursor: 'pointer', fontWeight: form.destino === d.nombre ? 600 : 400 }}>
+                  {d.emoji} {d.nombre}
                 </button>
               ))}
             </div>
@@ -156,26 +189,30 @@ function App() {
   const [tab, setTab] = useState('todos');
   const [filtroDestino, setFiltroDestino] = useState('Todos');
   const [productos, setProductos] = useState([]);
+  const [destinos, setDestinos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [productoEditar, setProductoEditar] = useState(null);
   const [modalAlerta, setModalAlerta] = useState(null);
+  const [mostrarModalDestino, setMostrarModalDestino] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
     supabase.auth.onAuthStateChange((_event, session) => setSession(session));
   }, []);
 
-useEffect(() => {
-  if (session) cargarHogar();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [session]);
-
+  useEffect(() => {
+    if (session) cargarHogar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
 
   const cargarHogar = async () => {
     const { data } = await supabase.from('miembros_hogar').select('hogar_id').eq('user_id', session.user.id).single();
-    if (data) { setHogarId(data.hogar_id); cargarProductos(data.hogar_id); }
-    else setCargando(false);
+    if (data) {
+      setHogarId(data.hogar_id);
+      cargarProductos(data.hogar_id);
+      cargarDestinos(data.hogar_id);
+    } else setCargando(false);
   };
 
   const cargarProductos = async (hid) => {
@@ -183,6 +220,11 @@ useEffect(() => {
     const { data } = await supabase.from('productos').select('*').eq('hogar_id', hid || hogarId);
     setProductos(data || []);
     setCargando(false);
+  };
+
+  const cargarDestinos = async (hid) => {
+    const { data } = await supabase.from('destinos').select('*').eq('hogar_id', hid || hogarId);
+    setDestinos(data || []);
   };
 
   const handleGuardar = async (producto) => {
@@ -213,36 +255,29 @@ useEffect(() => {
   };
 
   if (!session) return <Auth />;
-
   if (cargando) return <div style={{ textAlign: 'center', padding: 60, fontFamily: 'sans-serif', color: '#888' }}>Cargando...</div>;
 
   if (!hogarId) return (
-  <div style={{ textAlign: 'center', padding: 60, fontFamily: 'sans-serif' }}>
-    <div style={{ fontSize: 40 }}>🏠</div>
-    <h2 style={{ fontSize: 18, margin: '16px 0 8px' }}>No estás en ningún hogar</h2>
-    <p style={{ color: '#888', fontSize: 14, marginBottom: 24 }}>Crea uno nuevo o únete con un código</p>
-    <button onClick={async () => {
-      const nombreHogar = prompt('¿Cómo se llama tu hogar? Ej: Familia García');
-      if (!nombreHogar) return;
-      const codigo = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const { data: hogar } = await supabase.from('hogares').insert([{
-        nombre: nombreHogar,
-        codigo_invitacion: codigo,
-        admin_id: session.user.id
-      }]).select().single();
-      await supabase.from('miembros_hogar').insert([{
-        hogar_id: hogar.id,
-        user_id: session.user.id,
-        rol: 'admin'
-      }]);
-      alert(`✅ Hogar creado. Tu código de invitación es: ${codigo}`);
-      cargarHogar();
-    }} style={{ padding: '12px 24px', border: 'none', borderRadius: 8, background: '#333', color: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 500, marginBottom: 12, display: 'block', width: '100%', maxWidth: 300, margin: '0 auto 12px' }}>
-      🏠 Crear hogar nuevo
-    </button>
-    <button onClick={() => supabase.auth.signOut()} style={{ padding: '10px 20px', border: '1px solid #ddd', borderRadius: 8, background: 'white', cursor: 'pointer', marginTop: 12 }}>Cerrar sesión</button>
-  </div>
-);
+    <div style={{ textAlign: 'center', padding: 60, fontFamily: 'sans-serif' }}>
+      <div style={{ fontSize: 40 }}>🏠</div>
+      <h2 style={{ fontSize: 18, margin: '16px 0 8px' }}>No estás en ningún hogar</h2>
+      <p style={{ color: '#888', fontSize: 14, marginBottom: 24 }}>Crea uno nuevo o únete con un código</p>
+      <button onClick={async () => {
+        const nombreHogar = prompt('¿Cómo se llama tu hogar?');
+        if (!nombreHogar) return;
+        const codigo = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const { data: hogar } = await supabase.from('hogares').insert([{ nombre: nombreHogar, codigo_invitacion: codigo, admin_id: session.user.id }]).select().single();
+        await supabase.from('miembros_hogar').insert([{ hogar_id: hogar.id, user_id: session.user.id, rol: 'admin' }]);
+        await supabase.from('destinos').insert([{ hogar_id: hogar.id, nombre: 'Casa General', emoji: '🏠' }]);
+        alert(`✅ Hogar creado. Código de invitación: ${codigo}`);
+        cargarHogar();
+      }} style={{ padding: '12px 24px', border: 'none', borderRadius: 8, background: '#333', color: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 500, marginBottom: 12 }}>
+        🏠 Crear hogar nuevo
+      </button>
+      <br />
+      <button onClick={() => supabase.auth.signOut()} style={{ padding: '10px 20px', border: '1px solid #ddd', borderRadius: 8, background: 'white', cursor: 'pointer', marginTop: 12 }}>Cerrar sesión</button>
+    </div>
+  );
 
   const listaBase = tab === 'todos' ? productos : productos.filter(p => p.ubicacion === tab);
   const lista = filtroDestino === 'Todos' ? listaBase : listaBase.filter(p => p.destino === filtroDestino);
@@ -275,12 +310,18 @@ useEffect(() => {
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, padding: '10px 16px', background: 'white', borderBottom: '1px solid #eee', overflowX: 'auto' }}>
-        {['Todos', ...DESTINOS].map(d => (
-          <button key={d} onClick={() => setFiltroDestino(d)} style={{ padding: '5px 14px', borderRadius: 20, border: filtroDestino === d ? '2px solid #333' : '1px solid #ddd', background: filtroDestino === d ? '#333' : 'white', color: filtroDestino === d ? 'white' : '#666', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: filtroDestino === d ? 600 : 400 }}>
-            {d === 'Coco&Milo' ? '🐾 Coco&Milo' : d === 'Agustín' ? '😊 Agustín' : d === 'Casa General' ? '🏠 Casa General' : '✨ Todos'}
+      <div style={{ display: 'flex', gap: 8, padding: '10px 16px', background: 'white', borderBottom: '1px solid #eee', overflowX: 'auto', alignItems: 'center' }}>
+        <button onClick={() => setFiltroDestino('Todos')} style={{ padding: '5px 14px', borderRadius: 20, border: filtroDestino === 'Todos' ? '2px solid #333' : '1px solid #ddd', background: filtroDestino === 'Todos' ? '#333' : 'white', color: filtroDestino === 'Todos' ? 'white' : '#666', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: filtroDestino === 'Todos' ? 600 : 400 }}>
+          ✨ Todos
+        </button>
+        {destinos.map(d => (
+          <button key={d.id} onClick={() => setFiltroDestino(d.nombre)} style={{ padding: '5px 14px', borderRadius: 20, border: filtroDestino === d.nombre ? '2px solid #333' : '1px solid #ddd', background: filtroDestino === d.nombre ? '#333' : 'white', color: filtroDestino === d.nombre ? 'white' : '#666', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: filtroDestino === d.nombre ? 600 : 400 }}>
+            {d.emoji} {d.nombre}
           </button>
         ))}
+        <button onClick={() => setMostrarModalDestino(true)} style={{ padding: '5px 12px', borderRadius: 20, border: '1px dashed #ccc', background: 'white', color: '#aaa', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          + Agregar
+        </button>
       </div>
 
       <div style={{ padding: 16 }}>
@@ -322,7 +363,8 @@ useEffect(() => {
       </div>
 
       {modalAlerta && <ModalAlerta titulo={modalAlerta.titulo} productos={modalAlerta.lista} onCerrar={() => setModalAlerta(null)} onEliminar={handleEliminar} onEditar={handleEditar} />}
-      {mostrarFormulario && <FormularioProducto onGuardar={handleGuardar} onCerrar={handleCerrar} productoEditar={productoEditar} />}
+      {mostrarFormulario && <FormularioProducto onGuardar={handleGuardar} onCerrar={handleCerrar} productoEditar={productoEditar} destinos={destinos} />}
+      {mostrarModalDestino && <ModalDestino hogarId={hogarId} onCerrar={() => setMostrarModalDestino(false)} onGuardado={() => cargarDestinos()} />}
     </div>
   );
 }
