@@ -7,7 +7,6 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [nombre, setNombre] = useState('');
   const [nombreHogar, setNombreHogar] = useState('');
-  const [codigoInvitacion, setCodigoInvitacion] = useState('');
   const [flujo, setFlujo] = useState('inicio');
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState('');
@@ -26,41 +25,60 @@ export default function Auth() {
   };
 
   const handleRegistro = async () => {
-    if (!email || !password || !nombre) {
+    if (!email || !password || !nombre || !nombreHogar) {
       setMensaje('Completa todos los campos');
       return;
     }
     setCargando(true);
     setMensaje('');
+
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) { setMensaje(error.message); setCargando(false); return; }
 
     if (flujo === 'crear') {
       const codigo = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const { data: hogar } = await supabase.from('hogares').insert([{
+      const { data: hogar, error: errorHogar } = await supabase.from('hogares').insert([{
         nombre: nombreHogar,
         codigo_invitacion: codigo,
         admin_id: data.user.id
       }]).select().single();
 
+      if (errorHogar) { setMensaje('Error al crear el hogar'); setCargando(false); return; }
+
       await supabase.from('miembros_hogar').insert([{
         hogar_id: hogar.id,
         user_id: data.user.id,
-        rol: 'admin'
+        rol: 'admin',
+        nombre,
+        estado: 'activo'
       }]);
-      setMensaje(`✅ Hogar creado. Tu código de invitación es: ${codigo} — compártelo con tu familia`);
+      await supabase.from('destinos').insert([{ hogar_id: hogar.id, nombre: 'Casa General', emoji: '🏠' }]);
+      setMensaje('✅ Hogar creado. Ya puedes iniciar sesión.');
     } else {
-      const { data: hogar } = await supabase.from('hogares').select('*').eq('codigo_invitacion', codigoInvitacion.toUpperCase()).single();
-      if (!hogar) { setMensaje('Código de invitación inválido'); setCargando(false); return; }
+      const { data: hogares } = await supabase
+        .from('hogares')
+        .select('*')
+        .ilike('nombre', nombreHogar.trim());
+
+      if (!hogares || hogares.length === 0) {
+        setMensaje('No se encontró un hogar con ese nombre. Verifica con el administrador.');
+        setCargando(false);
+        return;
+      }
+
       await supabase.from('miembros_hogar').insert([{
-        hogar_id: hogar.id,
+        hogar_id: hogares[0].id,
         user_id: data.user.id,
-        rol: 'miembro'
+        rol: 'miembro',
+        nombre,
+        estado: 'pendiente'
       }]);
-      setMensaje('✅ Te uniste al hogar correctamente. Revisa tu email para confirmar tu cuenta.');
+      setMensaje('✅ Solicitud enviada. El administrador del hogar deberá aprobarte para que puedas acceder.');
     }
     setCargando(false);
   };
+
+  const resetRegistro = () => { setModo('login'); setFlujo('inicio'); setMensaje(''); };
 
   return (
     <div style={{ maxWidth: 400, margin: '0 auto', padding: '40px 20px', fontFamily: 'sans-serif' }}>
@@ -93,13 +111,13 @@ export default function Auth() {
             <h2 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 8px' }}>Crear cuenta</h2>
             <p style={{ fontSize: 13, color: '#888', margin: '0 0 20px' }}>¿Cómo quieres unirte?</p>
             <button onClick={() => setFlujo('crear')} style={{ ...btnPrimary, marginTop: 0 }}>🏠 Crear un hogar nuevo</button>
-            <button onClick={() => setFlujo('unirse')} style={btnSecondary}>🔑 Unirme con código de invitación</button>
-            <button onClick={() => { setModo('login'); setFlujo('inicio'); setMensaje(''); }} style={{ ...btnSecondary, color: '#888', border: 'none' }}>← Volver al login</button>
+            <button onClick={() => setFlujo('unirse')} style={btnSecondary}>🔍 Solicitar unirme a un hogar</button>
+            <button onClick={resetRegistro} style={{ ...btnSecondary, color: '#888', border: 'none' }}>← Volver al login</button>
           </>
         ) : (
           <>
             <h2 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 20px' }}>
-              {flujo === 'crear' ? '🏠 Crear hogar' : '🔑 Unirme a un hogar'}
+              {flujo === 'crear' ? '🏠 Crear hogar' : '🔍 Solicitar unirme a un hogar'}
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
@@ -114,20 +132,25 @@ export default function Auth() {
                 <div style={labelStyle}>Contraseña</div>
                 <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={inputStyle} />
               </div>
-              {flujo === 'crear' ? (
-                <div>
-                  <div style={labelStyle}>Nombre del hogar</div>
-                  <input value={nombreHogar} onChange={e => setNombreHogar(e.target.value)} placeholder="Ej: Familia Coco y Milo" style={inputStyle} />
-                </div>
-              ) : (
-                <div>
-                  <div style={labelStyle}>Código de invitación</div>
-                  <input value={codigoInvitacion} onChange={e => setCodigoInvitacion(e.target.value)} placeholder="Ej: ABC123" style={inputStyle} />
-                </div>
-              )}
+              <div>
+                <div style={labelStyle}>{flujo === 'crear' ? 'Nombre del hogar' : 'Nombre del hogar al que quieres unirte'}</div>
+                <input
+                  value={nombreHogar}
+                  onChange={e => setNombreHogar(e.target.value)}
+                  placeholder={flujo === 'crear' ? 'Ej: Familia Coco y Milo' : 'Ej: Familia Coco y Milo'}
+                  style={inputStyle}
+                />
+                {flujo === 'unirse' && (
+                  <div style={{ fontSize: 11, color: '#aaa', marginTop: 4 }}>Escribe el nombre exacto. El admin deberá aprobar tu solicitud.</div>
+                )}
+              </div>
             </div>
-            {mensaje && <p style={{ fontSize: 13, color: mensaje.startsWith('✅') ? '#3B6D11' : '#A32D2D', marginTop: 8 }}>{mensaje}</p>}
-            <button onClick={handleRegistro} disabled={cargando} style={btnPrimary}>{cargando ? 'Creando...' : flujo === 'crear' ? 'Crear hogar' : 'Unirme al hogar'}</button>
+            {mensaje && (
+              <p style={{ fontSize: 13, color: mensaje.startsWith('✅') ? '#3B6D11' : '#A32D2D', marginTop: 8 }}>{mensaje}</p>
+            )}
+            <button onClick={handleRegistro} disabled={cargando} style={btnPrimary}>
+              {cargando ? 'Enviando...' : flujo === 'crear' ? 'Crear hogar' : 'Enviar solicitud'}
+            </button>
             <button onClick={() => { setFlujo('inicio'); setMensaje(''); }} style={{ ...btnSecondary, color: '#888', border: 'none' }}>← Volver</button>
           </>
         )}

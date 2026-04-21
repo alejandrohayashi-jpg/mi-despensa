@@ -190,6 +190,9 @@ function App() {
   const [filtroDestino, setFiltroDestino] = useState('Todos');
   const [productos, setProductos] = useState([]);
   const [destinos, setDestinos] = useState([]);
+  const [solicitudes, setSolicitudes] = useState([]);
+  const [esAdmin, setEsAdmin] = useState(false);
+  const [estadoMiembro, setEstadoMiembro] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [productoEditar, setProductoEditar] = useState(null);
@@ -207,12 +210,26 @@ function App() {
   }, [session]);
 
   const cargarHogar = async () => {
-    const { data } = await supabase.from('miembros_hogar').select('hogar_id').eq('user_id', session.user.id).single();
-    if (data) {
+    const { data } = await supabase
+      .from('miembros_hogar')
+      .select('hogar_id, rol, estado')
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (!data) { setCargando(false); return; }
+
+    const estado = data.estado || 'activo';
+    setEstadoMiembro(estado);
+    setEsAdmin(data.rol === 'admin');
+
+    if (estado === 'activo') {
       setHogarId(data.hogar_id);
       cargarProductos(data.hogar_id);
       cargarDestinos(data.hogar_id);
-    } else setCargando(false);
+      if (data.rol === 'admin') cargarSolicitudes(data.hogar_id);
+    } else {
+      setCargando(false);
+    }
   };
 
   const cargarProductos = async (hid) => {
@@ -225,6 +242,33 @@ function App() {
   const cargarDestinos = async (hid) => {
     const { data } = await supabase.from('destinos').select('*').eq('hogar_id', hid || hogarId);
     setDestinos(data || []);
+  };
+
+  const cargarSolicitudes = async (hid) => {
+    const { data } = await supabase
+      .from('miembros_hogar')
+      .select('*')
+      .eq('hogar_id', hid || hogarId)
+      .eq('estado', 'pendiente');
+    setSolicitudes(data || []);
+  };
+
+  const handleAprobar = async (userId) => {
+    await supabase
+      .from('miembros_hogar')
+      .update({ estado: 'activo' })
+      .eq('hogar_id', hogarId)
+      .eq('user_id', userId);
+    cargarSolicitudes();
+  };
+
+  const handleRechazar = async (userId) => {
+    await supabase
+      .from('miembros_hogar')
+      .update({ estado: 'rechazado' })
+      .eq('hogar_id', hogarId)
+      .eq('user_id', userId);
+    cargarSolicitudes();
   };
 
   const handleGuardar = async (producto) => {
@@ -257,25 +301,38 @@ function App() {
   if (!session) return <Auth />;
   if (cargando) return <div style={{ textAlign: 'center', padding: 60, fontFamily: 'sans-serif', color: '#888' }}>Cargando...</div>;
 
+  if (estadoMiembro === 'pendiente') return (
+    <div style={{ maxWidth: 400, margin: '0 auto', padding: '60px 20px', fontFamily: 'sans-serif', textAlign: 'center' }}>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 12px' }}>Solicitud pendiente</h2>
+      <p style={{ fontSize: 14, color: '#888', lineHeight: 1.6, marginBottom: 32 }}>
+        Tu solicitud para unirte al hogar está siendo revisada por el administrador.<br />Vuelve a intentar más tarde.
+      </p>
+      <button onClick={() => supabase.auth.signOut()} style={{ padding: '10px 24px', border: '1px solid #ddd', borderRadius: 8, background: 'white', cursor: 'pointer', fontSize: 14, color: '#666' }}>
+        Cerrar sesión
+      </button>
+    </div>
+  );
+
+  if (estadoMiembro === 'rechazado') return (
+    <div style={{ maxWidth: 400, margin: '0 auto', padding: '60px 20px', fontFamily: 'sans-serif', textAlign: 'center' }}>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>❌</div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 12px' }}>Solicitud rechazada</h2>
+      <p style={{ fontSize: 14, color: '#888', lineHeight: 1.6, marginBottom: 32 }}>
+        Tu solicitud para unirte al hogar fue rechazada.<br />Contacta al administrador si crees que es un error.
+      </p>
+      <button onClick={() => supabase.auth.signOut()} style={{ padding: '10px 24px', border: '1px solid #ddd', borderRadius: 8, background: 'white', cursor: 'pointer', fontSize: 14, color: '#666' }}>
+        Cerrar sesión
+      </button>
+    </div>
+  );
+
   if (!hogarId) return (
     <div style={{ textAlign: 'center', padding: 60, fontFamily: 'sans-serif' }}>
       <div style={{ fontSize: 40 }}>🏠</div>
       <h2 style={{ fontSize: 18, margin: '16px 0 8px' }}>No estás en ningún hogar</h2>
-      <p style={{ color: '#888', fontSize: 14, marginBottom: 24 }}>Crea uno nuevo o únete con un código</p>
-      <button onClick={async () => {
-        const nombreHogar = prompt('¿Cómo se llama tu hogar?');
-        if (!nombreHogar) return;
-        const codigo = Math.random().toString(36).substring(2, 8).toUpperCase();
-        const { data: hogar } = await supabase.from('hogares').insert([{ nombre: nombreHogar, codigo_invitacion: codigo, admin_id: session.user.id }]).select().single();
-        await supabase.from('miembros_hogar').insert([{ hogar_id: hogar.id, user_id: session.user.id, rol: 'admin' }]);
-        await supabase.from('destinos').insert([{ hogar_id: hogar.id, nombre: 'Casa General', emoji: '🏠' }]);
-        alert(`✅ Hogar creado. Código de invitación: ${codigo}`);
-        cargarHogar();
-      }} style={{ padding: '12px 24px', border: 'none', borderRadius: 8, background: '#333', color: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 500, marginBottom: 12 }}>
-        🏠 Crear hogar nuevo
-      </button>
-      <br />
-      <button onClick={() => supabase.auth.signOut()} style={{ padding: '10px 20px', border: '1px solid #ddd', borderRadius: 8, background: 'white', cursor: 'pointer', marginTop: 12 }}>Cerrar sesión</button>
+      <p style={{ color: '#888', fontSize: 14, marginBottom: 24 }}>Crea uno nuevo o solicita unirte desde el registro</p>
+      <button onClick={() => supabase.auth.signOut()} style={{ padding: '10px 20px', border: '1px solid #ddd', borderRadius: 8, background: 'white', cursor: 'pointer' }}>Cerrar sesión</button>
     </div>
   );
 
@@ -325,6 +382,30 @@ function App() {
       </div>
 
       <div style={{ padding: 16 }}>
+        {esAdmin && solicitudes.length > 0 && (
+          <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 12, padding: 16, marginBottom: 16 }}>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12, color: '#92400E' }}>
+              📬 Solicitudes de acceso ({solicitudes.length})
+            </div>
+            {solicitudes.map((s, i) => (
+              <div key={s.user_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: i === 0 ? 0 : 10, marginTop: i === 0 ? 0 : 10, borderTop: i === 0 ? 'none' : '1px solid #FDE68A' }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>{s.nombre || 'Usuario'}</div>
+                  <div style={{ fontSize: 11, color: '#aaa' }}>{s.user_id}</div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => handleAprobar(s.user_id)} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', background: '#3B6D11', color: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+                    ✅ Aprobar
+                  </button>
+                  <button onClick={() => handleRechazar(s.user_id)} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', background: '#A32D2D', color: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+                    ✕ Rechazar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 16 }}>
           {[
             { num: vencidos.length, label: 'Vencidos', color: '#A32D2D', lista: vencidos, titulo: '🔴 Productos vencidos' },
