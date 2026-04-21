@@ -166,9 +166,11 @@ function App() {
     supabase.auth.onAuthStateChange((_event, session) => setSession(session));
   }, []);
 
-  useEffect(() => {
-    if (session) cargarHogar();
-  }, [session]);
+useEffect(() => {
+  if (session) cargarHogar();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [session]);
+
 
   const cargarHogar = async () => {
     const { data } = await supabase.from('miembros_hogar').select('hogar_id').eq('user_id', session.user.id).single();
