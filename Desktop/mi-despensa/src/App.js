@@ -29,7 +29,7 @@ function ProductoItem({ producto, onEliminar, onEditar, mostrarUbicacion }) {
           <span style={{ fontSize: 11, padding: '1px 8px', borderRadius: 20, fontWeight: 500, background: dc.bg, color: dc.color }}>{producto.destino}</span>
           {mostrarUbicacion && (
             <span style={{ fontSize: 11, padding: '1px 8px', borderRadius: 20, background: '#f0f0f0', color: '#666' }}>
-              {producto.ubicacion === 'refrigerador' ? '🧊 Refri' : '🗄️ Closet'}
+              {producto.ubicacion === 'refrigerador' ? '🧊 Refri' : '🗄️ Despensa'}
             </span>
           )}
         </div>
