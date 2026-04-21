@@ -10,18 +10,34 @@ function getEstado(vencimiento) {
   return { texto: 'OK', color: '#3B6D11', bg: '#EAF3DE' };
 }
 
+const SECCIONES = [
+  { id: 'refrigerador', label: '🧊 Refrigerador' },
+  { id: 'closet', label: '🗄️ Closet' },
+];
+
+const DESTINOS = ['Casa General', 'Agustín', 'Coco&Milo'];
+
 function ProductoItem({ producto, onEliminar, onEditar }) {
   const estado = getEstado(producto.vencimiento);
+  const destinoColor = {
+    'Agustín': { bg: '#E6F1FB', color: '#185FA5' },
+    'Coco&Milo': { bg: '#FAEEDA', color: '#854F0B' },
+    'Casa General': { bg: '#EAF3DE', color: '#3B6D11' },
+  }[producto.destino] || { bg: '#f0f0f0', color: '#666' };
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'white', border: '1px solid #eee', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'white', border: '1px solid #eee', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
       <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 500, fontSize: 14 }}>{producto.nombre}</div>
-        <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{producto.categoria} · Vence {producto.vencimiento}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+          <span style={{ fontWeight: 500, fontSize: 14 }}>{producto.nombre}</span>
+          <span style={{ fontSize: 11, padding: '1px 8px', borderRadius: 20, fontWeight: 500, background: destinoColor.bg, color: destinoColor.color }}>{producto.destino}</span>
+        </div>
+        <div style={{ fontSize: 12, color: '#888' }}>{producto.categoria} · Vence {producto.vencimiento}</div>
       </div>
-      <div style={{ fontSize: 13, color: '#666', marginRight: 8 }}>{producto.cantidad} {producto.unidad}</div>
-      <span style={{ fontSize: 11, padding: '2px 10px', borderRadius: 20, fontWeight: 500, background: estado.bg, color: estado.color, marginRight: 8 }}>{estado.texto}</span>
-      <button onClick={() => onEditar(producto)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: 14, padding: '0 4px' }}>✏️</button>
-      <button onClick={() => onEliminar(producto.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: 16, padding: '0 4px' }}>✕</button>
+      <div style={{ fontSize: 13, color: '#666', marginRight: 6 }}>{producto.cantidad} {producto.unidad}</div>
+      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, fontWeight: 500, background: estado.bg, color: estado.color, marginRight: 6 }}>{estado.texto}</span>
+      <button onClick={() => onEditar(producto)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: 14, padding: '0 2px' }}>✏️</button>
+      <button onClick={() => onEliminar(producto.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: 16, padding: '0 2px' }}>✕</button>
     </div>
   );
 }
@@ -30,7 +46,7 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar }) {
   const [form, setForm] = useState(
     productoEditar
       ? { ...productoEditar, cantidad: String(productoEditar.cantidad) }
-      : { nombre: '', categoria: '', cantidad: '', unidad: 'un.', vencimiento: '' }
+      : { nombre: '', categoria: '', cantidad: '', unidad: 'un.', vencimiento: '', destino: 'Casa General' }
   );
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -49,7 +65,7 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar }) {
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-      <div style={{ background: 'white', borderRadius: 14, padding: 24, width: '90%', maxWidth: 420 }}>
+      <div style={{ background: 'white', borderRadius: 14, padding: 24, width: '90%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>{productoEditar ? 'Editar producto' : 'Agregar producto'}</h2>
           <button onClick={onCerrar} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#999' }}>✕</button>
@@ -58,6 +74,16 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar }) {
           <div>
             <div style={labelStyle}>Nombre del producto</div>
             <input name="nombre" value={form.nombre} onChange={handleChange} placeholder="Ej: Leche entera" style={inputStyle} />
+          </div>
+          <div>
+            <div style={labelStyle}>Para quién es</div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              {DESTINOS.map(d => (
+                <button key={d} onClick={() => setForm({ ...form, destino: d })} style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: form.destino === d ? '2px solid #333' : '1px solid #ddd', background: form.destino === d ? '#333' : 'white', color: form.destino === d ? 'white' : '#666', fontSize: 12, cursor: 'pointer', fontWeight: form.destino === d ? 600 : 400 }}>
+                  {d}
+                </button>
+              ))}
+            </div>
           </div>
           <div>
             <div style={labelStyle}>Categoría</div>
@@ -72,6 +98,7 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar }) {
               <option>Cereales</option>
               <option>Bebidas</option>
               <option>Snacks</option>
+              <option>Alimento mascotas</option>
               <option>Otros</option>
             </select>
           </div>
@@ -110,14 +137,13 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar }) {
 
 function App() {
   const [tab, setTab] = useState('refrigerador');
+  const [filtroDestino, setFiltroDestino] = useState('Todos');
   const [productos, setProductos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [productoEditar, setProductoEditar] = useState(null);
 
-  useEffect(() => {
-    cargarProductos();
-  }, []);
+  useEffect(() => { cargarProductos(); }, []);
 
   const cargarProductos = async () => {
     setCargando(true);
@@ -129,19 +155,16 @@ function App() {
 
   const handleGuardar = async (producto) => {
     if (productoEditar) {
-      const { error } = await supabase.from('productos').update(producto).eq('id', producto.id);
-      if (error) console.error('Error editando:', error);
+      await supabase.from('productos').update(producto).eq('id', producto.id);
     } else {
-      const { error } = await supabase.from('productos').insert([{ ...producto, ubicacion: tab }]);
-      if (error) console.error('Error guardando:', error);
+      await supabase.from('productos').insert([{ ...producto, ubicacion: tab }]);
     }
     cargarProductos();
   };
 
   const handleEliminar = async (id) => {
-    const { error } = await supabase.from('productos').delete().eq('id', id);
-    if (error) console.error('Error eliminando:', error);
-    else cargarProductos();
+    await supabase.from('productos').delete().eq('id', id);
+    cargarProductos();
   };
 
   const handleEditar = (producto) => {
@@ -154,7 +177,8 @@ function App() {
     setProductoEditar(null);
   };
 
-  const lista = productos.filter(p => p.ubicacion === tab);
+  const listaBase = productos.filter(p => p.ubicacion === tab);
+  const lista = filtroDestino === 'Todos' ? listaBase : listaBase.filter(p => p.destino === filtroDestino);
   const vencidos = lista.filter(p => getEstado(p.vencimiento).texto === 'Vencido').length;
   const ok = lista.filter(p => getEstado(p.vencimiento).texto === 'OK').length;
   const categorias = [...new Set(lista.map(p => p.categoria))];
@@ -162,14 +186,25 @@ function App() {
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', fontFamily: 'sans-serif', background: '#f5f5f5', minHeight: '100vh' }}>
       <div style={{ background: 'white', padding: '16px 20px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Mi Despensa</h1>
-        <span style={{ fontSize: 13, color: '#888' }}>Familia</span>
+        <div>
+          <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Coco&Milo House</h1>
+          <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>Inventario del hogar</div>
+        </div>
+        <span style={{ fontSize: 13, color: '#888' }}>🏠</span>
       </div>
 
       <div style={{ display: 'flex', background: 'white', borderBottom: '1px solid #eee' }}>
-        {['refrigerador', 'closet'].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{ flex: 1, padding: '10px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: tab === t ? 600 : 400, borderBottom: tab === t ? '2px solid #333' : '2px solid transparent', fontSize: 14 }}>
-            {t === 'refrigerador' ? '🧊 Refrigerador' : '🗄️ Closet'}
+        {SECCIONES.map(s => (
+          <button key={s.id} onClick={() => setTab(s.id)} style={{ flex: 1, padding: '10px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: tab === s.id ? 600 : 400, borderBottom: tab === s.id ? '2px solid #333' : '2px solid transparent', fontSize: 14 }}>
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, padding: '10px 16px', background: 'white', borderBottom: '1px solid #eee', overflowX: 'auto' }}>
+        {['Todos', ...DESTINOS].map(d => (
+          <button key={d} onClick={() => setFiltroDestino(d)} style={{ padding: '5px 14px', borderRadius: 20, border: filtroDestino === d ? '2px solid #333' : '1px solid #ddd', background: filtroDestino === d ? '#333' : 'white', color: filtroDestino === d ? 'white' : '#666', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: filtroDestino === d ? 600 : 400 }}>
+            {d === 'Coco&Milo' ? '🐾 Coco&Milo' : d === 'Agustín' ? '👶 Agustín' : d === 'Casa General' ? '🏠 Casa General' : '✨ Todos'}
           </button>
         ))}
       </div>
@@ -208,11 +243,7 @@ function App() {
       </div>
 
       {mostrarFormulario && (
-        <FormularioProducto
-          onGuardar={handleGuardar}
-          onCerrar={handleCerrar}
-          productoEditar={productoEditar}
-        />
+        <FormularioProducto onGuardar={handleGuardar} onCerrar={handleCerrar} productoEditar={productoEditar} />
       )}
     </div>
   );
