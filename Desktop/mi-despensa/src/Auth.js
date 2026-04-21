@@ -6,6 +6,7 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nombre, setNombre] = useState('');
+  const [nombreHogar, setNombreHogar] = useState('');
   const [codigoInvitacion, setCodigoInvitacion] = useState('');
   const [flujo, setFlujo] = useState('inicio');
   const [cargando, setCargando] = useState(false);
@@ -37,7 +38,7 @@ export default function Auth() {
     if (flujo === 'crear') {
       const codigo = Math.random().toString(36).substring(2, 8).toUpperCase();
       const { data: hogar } = await supabase.from('hogares').insert([{
-        nombre,
+        nombre: nombreHogar,
         codigo_invitacion: codigo,
         admin_id: data.user.id
       }]).select().single();
@@ -116,7 +117,7 @@ export default function Auth() {
               {flujo === 'crear' ? (
                 <div>
                   <div style={labelStyle}>Nombre del hogar</div>
-                  <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Familia García" style={inputStyle} />
+                  <input value={nombreHogar} onChange={e => setNombreHogar(e.target.value)} placeholder="Ej: Familia Coco y Milo" style={inputStyle} />
                 </div>
               ) : (
                 <div>
