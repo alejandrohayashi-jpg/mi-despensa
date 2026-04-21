@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
+import Auth from './Auth';
 
 function getEstado(vencimiento) {
   const hoy = new Date();
@@ -11,7 +12,6 @@ function getEstado(vencimiento) {
 }
 
 const DESTINOS = ['Casa General', 'Agustín', 'Coco&Milo'];
-
 const destinoStyle = {
   'Agustín': { bg: '#E6F1FB', color: '#185FA5' },
   'Coco&Milo': { bg: '#FAEEDA', color: '#854F0B' },
@@ -151,6 +151,8 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar }) {
 }
 
 function App() {
+  const [session, setSession] = useState(null);
+  const [hogarId, setHogarId] = useState(null);
   const [tab, setTab] = useState('todos');
   const [filtroDestino, setFiltroDestino] = useState('Todos');
   const [productos, setProductos] = useState([]);
@@ -159,13 +161,25 @@ function App() {
   const [productoEditar, setProductoEditar] = useState(null);
   const [modalAlerta, setModalAlerta] = useState(null);
 
-  useEffect(() => { cargarProductos(); }, []);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+  }, []);
 
-  const cargarProductos = async () => {
+  useEffect(() => {
+    if (session) cargarHogar();
+  }, [session]);
+
+  const cargarHogar = async () => {
+    const { data } = await supabase.from('miembros_hogar').select('hogar_id').eq('user_id', session.user.id).single();
+    if (data) { setHogarId(data.hogar_id); cargarProductos(data.hogar_id); }
+    else setCargando(false);
+  };
+
+  const cargarProductos = async (hid) => {
     setCargando(true);
-    const { data, error } = await supabase.from('productos').select('*');
-    if (error) console.error('Error cargando:', error);
-    else setProductos(data);
+    const { data } = await supabase.from('productos').select('*').eq('hogar_id', hid || hogarId);
+    setProductos(data || []);
     setCargando(false);
   };
 
@@ -174,7 +188,7 @@ function App() {
     if (productoEditar) {
       await supabase.from('productos').update(producto).eq('id', producto.id);
     } else {
-      await supabase.from('productos').insert([{ ...producto, ubicacion }]);
+      await supabase.from('productos').insert([{ ...producto, ubicacion, hogar_id: hogarId }]);
     }
     cargarProductos();
   };
@@ -196,9 +210,21 @@ function App() {
     setProductoEditar(null);
   };
 
+  if (!session) return <Auth />;
+
+  if (cargando) return <div style={{ textAlign: 'center', padding: 60, fontFamily: 'sans-serif', color: '#888' }}>Cargando...</div>;
+
+  if (!hogarId) return (
+    <div style={{ textAlign: 'center', padding: 60, fontFamily: 'sans-serif' }}>
+      <div style={{ fontSize: 40 }}>🏠</div>
+      <h2 style={{ fontSize: 18, margin: '16px 0 8px' }}>No estás en ningún hogar</h2>
+      <p style={{ color: '#888', fontSize: 14 }}>Crea uno nuevo o pide un código de invitación</p>
+      <button onClick={() => supabase.auth.signOut()} style={{ marginTop: 16, padding: '10px 20px', border: '1px solid #ddd', borderRadius: 8, background: 'white', cursor: 'pointer' }}>Cerrar sesión</button>
+    </div>
+  );
+
   const listaBase = tab === 'todos' ? productos : productos.filter(p => p.ubicacion === tab);
   const lista = filtroDestino === 'Todos' ? listaBase : listaBase.filter(p => p.destino === filtroDestino);
-
   const vencidos = lista.filter(p => getEstado(p.vencimiento).texto === 'Vencido');
   const porVencer = lista.filter(p => getEstado(p.vencimiento).texto === 'Por vencer');
   const ok = lista.filter(p => getEstado(p.vencimiento).texto === 'OK');
@@ -217,7 +243,7 @@ function App() {
           <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Coco&Milo House</h1>
           <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>Inventario del hogar</div>
         </div>
-        <span style={{ fontSize: 20 }}>🏠</span>
+        <button onClick={() => supabase.auth.signOut()} style={{ fontSize: 12, color: '#888', background: 'none', border: '1px solid #eee', borderRadius: 8, padding: '4px 10px', cursor: 'pointer' }}>Salir</button>
       </div>
 
       <div style={{ display: 'flex', background: 'white', borderBottom: '1px solid #eee' }}>
@@ -239,14 +265,12 @@ function App() {
       <div style={{ padding: 16 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 16 }}>
           {[
-            { num: vencidos.length, label: 'Vencidos', color: '#A32D2D', bg: '#FCEBEB', lista: vencidos, titulo: '🔴 Productos vencidos' },
-            { num: porVencer.length, label: 'Por vencer', color: '#854F0B', bg: '#FAEEDA', lista: porVencer, titulo: '🟡 Por vencer pronto' },
-            { num: ok.length, label: 'En buen estado', color: '#3B6D11', bg: '#EAF3DE', lista: ok, titulo: '🟢 En buen estado' },
+            { num: vencidos.length, label: 'Vencidos', color: '#A32D2D', lista: vencidos, titulo: '🔴 Productos vencidos' },
+            { num: porVencer.length, label: 'Por vencer', color: '#854F0B', lista: porVencer, titulo: '🟡 Por vencer pronto' },
+            { num: ok.length, label: 'En buen estado', color: '#3B6D11', lista: ok, titulo: '🟢 En buen estado' },
           ].map(m => (
             <div key={m.label} onClick={() => setModalAlerta({ titulo: m.titulo, lista: m.lista })}
-              style={{ background: 'white', borderRadius: 10, padding: '12px', textAlign: 'center', border: `1px solid ${m.num > 0 ? m.color + '44' : '#eee'}`, cursor: 'pointer', transition: 'transform 0.1s' }}
-              onMouseOver={e => e.currentTarget.style.transform = 'scale(1.03)'}
-              onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}>
+              style={{ background: 'white', borderRadius: 10, padding: '12px', textAlign: 'center', border: '1px solid #eee', cursor: 'pointer' }}>
               <div style={{ fontSize: 22, fontWeight: 600, color: m.color }}>{m.num}</div>
               <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{m.label}</div>
             </div>
@@ -276,13 +300,8 @@ function App() {
         </button>
       </div>
 
-      {modalAlerta && (
-        <ModalAlerta titulo={modalAlerta.titulo} productos={modalAlerta.lista} onCerrar={() => setModalAlerta(null)} onEliminar={handleEliminar} onEditar={handleEditar} />
-      )}
-
-      {mostrarFormulario && (
-        <FormularioProducto onGuardar={handleGuardar} onCerrar={handleCerrar} productoEditar={productoEditar} />
-      )}
+      {modalAlerta && <ModalAlerta titulo={modalAlerta.titulo} productos={modalAlerta.lista} onCerrar={() => setModalAlerta(null)} onEliminar={handleEliminar} onEditar={handleEditar} />}
+      {mostrarFormulario && <FormularioProducto onGuardar={handleGuardar} onCerrar={handleCerrar} productoEditar={productoEditar} />}
     </div>
   );
 }
