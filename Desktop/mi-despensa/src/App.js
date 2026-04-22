@@ -13,8 +13,18 @@ function getEstado(vencimiento) {
   return { texto: 'OK', color: '#3B6D11', bg: '#EAF3DE' };
 }
 
+function getDiasStock(producto) {
+  const { cantidad, frecuencia_consumo, unidad_consumo } = producto;
+  if (!frecuencia_consumo || frecuencia_consumo <= 0) return null;
+  const consumoDiario = unidad_consumo?.includes('semana')
+    ? frecuencia_consumo / 7
+    : frecuencia_consumo;
+  return Math.floor(cantidad / consumoDiario);
+}
+
 function ProductoItem({ producto, onEliminar, onEditar, mostrarUbicacion }) {
   const estado = getEstado(producto.vencimiento);
+  const diasStock = getDiasStock(producto);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'white', border: '1px solid #eee', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
       <div style={{ flex: 1 }}>
@@ -28,6 +38,11 @@ function ProductoItem({ producto, onEliminar, onEditar, mostrarUbicacion }) {
           )}
         </div>
         <div style={{ fontSize: 12, color: '#888' }}>{producto.categoria} · Vence {producto.vencimiento}</div>
+        {diasStock !== null && diasStock <= 5 && (
+          <div style={{ fontSize: 11, color: '#C2410C', marginTop: 2, fontWeight: 500 }}>
+            ⚡ Se agota en ~{diasStock} día{diasStock !== 1 ? 's' : ''}
+          </div>
+        )}
       </div>
       <div style={{ fontSize: 13, color: '#666', marginRight: 6 }}>{producto.cantidad} {producto.unidad}</div>
       <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, fontWeight: 500, background: estado.bg, color: estado.color, marginRight: 6 }}>{estado.texto}</span>
@@ -97,8 +112,8 @@ function ModalDestino({ hogarId, onCerrar, onGuardado }) {
 function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos }) {
   const [form, setForm] = useState(
     productoEditar
-      ? { ...productoEditar, cantidad: String(productoEditar.cantidad) }
-      : { nombre: '', categoria: '', cantidad: '', unidad: 'un.', vencimiento: '', destino: destinos[0]?.nombre || 'Casa General' }
+      ? { ...productoEditar, cantidad: String(productoEditar.cantidad), frecuencia_consumo: String(productoEditar.frecuencia_consumo || ''), unidad_consumo: productoEditar.unidad_consumo || 'unidad/día' }
+      : { nombre: '', categoria: '', cantidad: '', unidad: 'un.', vencimiento: '', destino: destinos[0]?.nombre || 'Casa General', frecuencia_consumo: '', unidad_consumo: 'unidad/día' }
   );
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
   const handleGuardar = () => {
@@ -106,7 +121,11 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos }) {
       alert('Por favor completa todos los campos');
       return;
     }
-    onGuardar({ ...form, cantidad: Number(form.cantidad) });
+    onGuardar({
+      ...form,
+      cantidad: Number(form.cantidad),
+      frecuencia_consumo: form.frecuencia_consumo ? Number(form.frecuencia_consumo) : null,
+    });
     onCerrar();
   };
   const inputStyle = { width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, boxSizing: 'border-box', marginTop: 4 };
@@ -170,6 +189,20 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos }) {
           <div>
             <div style={labelStyle}>Fecha de vencimiento</div>
             <input name="vencimiento" type="date" value={form.vencimiento} onChange={handleChange} style={inputStyle} />
+          </div>
+          <div>
+            <div style={labelStyle}>Consumo diario (opcional)</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 8, marginTop: 4 }}>
+              <input name="frecuencia_consumo" type="number" min="0" value={form.frecuencia_consumo} onChange={handleChange} placeholder="Ej: 2" style={{ ...inputStyle, marginTop: 0 }} />
+              <select name="unidad_consumo" value={form.unidad_consumo} onChange={handleChange} style={{ ...inputStyle, marginTop: 0 }}>
+                <option>unidad/día</option>
+                <option>unidad/semana</option>
+                <option>kg/día</option>
+                <option>kg/semana</option>
+                <option>lt/día</option>
+                <option>lt/semana</option>
+              </select>
+            </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
@@ -503,6 +536,7 @@ function App() {
   const vencidos = lista.filter(p => getEstado(p.vencimiento).texto === 'Vencido');
   const porVencer = lista.filter(p => getEstado(p.vencimiento).texto === 'Por vencer');
   const ok = lista.filter(p => getEstado(p.vencimiento).texto === 'OK');
+  const porAgotar = lista.filter(p => { const d = getDiasStock(p); return d !== null && d <= 3; });
   const categorias = [...new Set(lista.map(p => p.categoria))];
 
   const TABS = [
@@ -592,16 +626,17 @@ function App() {
       </div>
 
       <div style={{ padding: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 16 }}>
           {[
             { num: vencidos.length, label: 'Vencidos', color: '#A32D2D', lista: vencidos, titulo: '🔴 Productos vencidos' },
             { num: porVencer.length, label: 'Por vencer', color: '#854F0B', lista: porVencer, titulo: '🟡 Por vencer pronto' },
+            { num: porAgotar.length, label: 'Por agotar', color: '#C2410C', lista: porAgotar, titulo: '🟠 Por agotar pronto' },
             { num: ok.length, label: 'En buen estado', color: '#3B6D11', lista: ok, titulo: '🟢 En buen estado' },
           ].map(m => (
             <div key={m.label} onClick={() => setModalAlerta({ titulo: m.titulo, lista: m.lista })}
-              style={{ background: 'white', borderRadius: 10, padding: '12px', textAlign: 'center', border: '1px solid #eee', cursor: 'pointer' }}>
-              <div style={{ fontSize: 22, fontWeight: 600, color: m.color }}>{m.num}</div>
-              <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{m.label}</div>
+              style={{ background: 'white', borderRadius: 10, padding: '10px 6px', textAlign: 'center', border: '1px solid #eee', cursor: 'pointer' }}>
+              <div style={{ fontSize: 20, fontWeight: 600, color: m.color }}>{m.num}</div>
+              <div style={{ fontSize: 10, color: '#888', marginTop: 2, lineHeight: 1.3 }}>{m.label}</div>
             </div>
           ))}
         </div>
