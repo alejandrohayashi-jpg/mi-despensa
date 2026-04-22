@@ -32,10 +32,10 @@ export default function Auth() {
     setCargando(true);
     setMensaje('');
 
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) { setMensaje(error.message); setCargando(false); return; }
-
     if (flujo === 'crear') {
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) { setMensaje(error.message); setCargando(false); return; }
+
       const codigo = Math.random().toString(36).substring(2, 8).toUpperCase();
       const { data: hogar, error: errorHogar } = await supabase.from('hogares').insert([{
         nombre: nombreHogar,
@@ -55,24 +55,46 @@ export default function Auth() {
       await supabase.from('destinos').insert([{ hogar_id: hogar.id, nombre: 'Casa General', emoji: '🏠' }]);
       setMensaje('✅ Hogar creado. Ya puedes iniciar sesión.');
     } else {
-      const { data: hogares } = await supabase
+      // Buscar el hogar ANTES de crear la cuenta, para no dejar usuarios huérfanos en auth
+      console.log('[unirse] Buscando hogar:', nombreHogar.trim());
+      const { data: hogares, error: errorBusqueda } = await supabase
         .from('hogares')
         .select('*')
         .ilike('nombre', nombreHogar.trim());
 
+      console.log('[unirse] Resultado búsqueda:', { hogares, errorBusqueda });
+
+      if (errorBusqueda) {
+        setMensaje('Error al buscar el hogar. Intenta de nuevo.');
+        setCargando(false);
+        return;
+      }
       if (!hogares || hogares.length === 0) {
         setMensaje('No se encontró un hogar con ese nombre. Verifica con el administrador.');
         setCargando(false);
         return;
       }
 
-      await supabase.from('miembros_hogar').insert([{
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) { setMensaje(error.message); setCargando(false); return; }
+
+      console.log('[unirse] Insertando miembro en hogar:', hogares[0].id, '— estado: pendiente');
+      const { error: errorInsert } = await supabase.from('miembros_hogar').insert([{
         hogar_id: hogares[0].id,
         user_id: data.user.id,
         rol: 'miembro',
         nombre,
         estado: 'pendiente'
       }]);
+
+      console.log('[unirse] Resultado insert miembro:', errorInsert ?? 'OK');
+
+      if (errorInsert) {
+        setMensaje('Error al enviar la solicitud. Intenta de nuevo.');
+        setCargando(false);
+        return;
+      }
+
       setMensaje('✅ Solicitud enviada. El administrador del hogar deberá aprobarte para que puedas acceder.');
     }
     setCargando(false);
