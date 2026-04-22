@@ -106,9 +106,7 @@ function ProductoItem({ producto, onEliminar, onEditar, onToggleModo, mostrarUbi
       <button onClick={() => onEditar(producto)} className="text-gray-300 hover:text-gray-500 text-sm p-0.5 transition-colors">✏️</button>
       <button
         onClick={() => { onEliminar(producto.id); setShowDelete(false); }}
-        className={`text-base p-0.5 transition-all duration-150 ${
-          showDelete ? 'text-red-400 opacity-100' : 'text-gray-300 opacity-0 group-hover:opacity-100 hover:text-red-400'
-        }`}
+        className={`text-base p-0.5 transition-opacity duration-150 opacity-0 group-hover:opacity-100 hover:text-red-400 ${showDelete ? '!opacity-100 text-red-400' : 'text-gray-300'}`}
       >✕</button>
     </div>
   );
@@ -1018,18 +1016,23 @@ function App() {
         {/* Contadores de estado — filtran la lista al hacer clic */}
         <div className="grid grid-cols-4 gap-2 mb-4">
           {[
-            { key: 'vencidos',  num: vencidos.length,  label: 'Vencidos',       numCls: 'text-red-600',   activeCls: 'border-red-300 ring-1 ring-red-200 bg-red-50' },
-            { key: 'porVencer', num: porVencer.length, label: 'Por vencer',     numCls: 'text-amber-600', activeCls: 'border-amber-300 ring-1 ring-amber-200 bg-amber-50' },
-            { key: 'porAgotar', num: porAgotar.length, label: 'Por agotar',     numCls: 'text-orange-600',activeCls: 'border-orange-300 ring-1 ring-orange-200 bg-orange-50' },
-            { key: 'ok',        num: ok.length,        label: 'En buen estado', numCls: 'text-green-700', activeCls: 'border-green-300 ring-1 ring-green-200 bg-green-50' },
+            { key: 'vencidos',  num: vencidos.length,  label: 'Vencidos',       numCls: 'text-red-600'   },
+            { key: 'porVencer', num: porVencer.length, label: 'Por vencer',     numCls: 'text-amber-600' },
+            { key: 'porAgotar', num: porAgotar.length, label: 'Por agotar',     numCls: 'text-orange-600'},
+            { key: 'ok',        num: ok.length,        label: 'En buen estado', numCls: 'text-green-700' },
           ].map(m => {
             const activo = filtroEstado === m.key;
+            const activeCls =
+              m.key === 'vencidos'  ? 'border-red-300 bg-red-50' :
+              m.key === 'porVencer' ? 'border-amber-300 bg-amber-50' :
+              m.key === 'porAgotar' ? 'border-orange-300 bg-orange-50' :
+                                      'border-green-300 bg-green-50';
             return (
               <div
                 key={m.key}
                 onClick={() => toggleFiltroEstado(m.key)}
-                className={`rounded-xl border p-3 text-center cursor-pointer transition-all ${
-                  activo ? m.activeCls : 'bg-white border-gray-100 hover:border-gray-200 hover:shadow-sm'
+                className={`rounded-xl border-2 p-3 text-center cursor-pointer transition-all ${
+                  activo ? activeCls : 'bg-white border-transparent hover:border-gray-200 hover:shadow-sm'
                 }`}
               >
                 <div className={`text-xl font-semibold ${m.numCls}`}>{m.num}</div>
