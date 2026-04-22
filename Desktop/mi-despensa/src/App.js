@@ -486,6 +486,10 @@ function App() {
   const [mostrarModalDestino, setMostrarModalDestino] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [modalActivo, setModalActivo] = useState(null);
+  const [categoriasColapsadas, setCategoriasColapsadas] = useState({});
+
+  const toggleCategoria = (cat) =>
+    setCategoriasColapsadas(prev => ({ ...prev, [cat]: !prev[cat] }));
 
   const menuRef = useRef(null);
 
@@ -818,21 +822,34 @@ function App() {
           <div className="text-center py-10 text-sm text-gray-400">Cargando productos...</div>
         ) : (
           <>
-            {categorias.map(cat => (
+            {categorias.map(cat => {
+              const colapsada = !!categoriasColapsadas[cat];
+              const items = lista.filter(p => p.categoria === cat);
+              return (
               <div key={cat} className="mb-4">
-                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{cat}</div>
-                {lista.filter(p => p.categoria === cat).map(p => (
-                  <ProductoItem
-                    key={p.id}
-                    producto={p}
-                    onEliminar={handleEliminar}
-                    onEditar={handleEditar}
-                    onToggleModo={handleToggleModo}
-                    mostrarUbicacion={tab === 'todos'}
-                  />
-                ))}
+                <button
+                  onClick={() => toggleCategoria(cat)}
+                  className="w-full flex items-center gap-2 mb-2 group"
+                >
+                  <span className={`text-gray-400 text-xs transition-transform duration-200 ${colapsada ? '' : 'rotate-90'}`}>▶</span>
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{cat}</span>
+                  <span className="text-xs text-gray-300 font-medium">{items.length}</span>
+                </button>
+                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${colapsada ? 'max-h-0' : 'max-h-[2000px]'}`}>
+                  {items.map(p => (
+                    <ProductoItem
+                      key={p.id}
+                      producto={p}
+                      onEliminar={handleEliminar}
+                      onEditar={handleEditar}
+                      onToggleModo={handleToggleModo}
+                      mostrarUbicacion={tab === 'todos'}
+                    />
+                  ))}
+                </div>
               </div>
-            ))}
+              );
+            })}
             {lista.length === 0 && (
               <div className="text-center py-10 text-sm text-gray-400">No hay productos aquí todavía</div>
             )}
