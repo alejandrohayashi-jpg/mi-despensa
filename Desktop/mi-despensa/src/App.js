@@ -39,7 +39,16 @@ function getDiasStock(producto) {
 }
 
 function ProductoItem({ producto, onEliminar, onEditar, onToggleModo, mostrarUbicacion }) {
+  const [showDelete, setShowDelete] = useState(false);
+  const longPressRef = useRef(null);
+
+  const handleTouchStart = () => {
+    longPressRef.current = setTimeout(() => setShowDelete(true), 600);
+  };
+  const handleTouchEnd = () => clearTimeout(longPressRef.current);
+
   const estado = getEstado(producto.vencimiento);
+  const venc = diasParaVencer(producto.vencimiento);
   const diasStock = getDiasStock(producto);
   const tieneConsumo = producto.frecuencia_consumo > 0;
   const modo = producto.modo_consumo || 'manual';
@@ -52,7 +61,12 @@ function ProductoItem({ producto, onEliminar, onEditar, onToggleModo, mostrarUbi
       : 'bg-green-50 text-green-700';
 
   return (
-    <div className="flex items-center gap-3 bg-white border border-gray-100 rounded-xl px-4 py-3 mb-2 hover:border-gray-200 transition-colors">
+    <div
+      className="group flex items-center gap-3 bg-white border border-gray-100 rounded-xl px-4 py-3 mb-2 hover:border-gray-200 transition-colors"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchMove={handleTouchEnd}
+    >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
           <span className="font-medium text-sm text-gray-900">{producto.nombre}</span>
@@ -63,10 +77,10 @@ function ProductoItem({ producto, onEliminar, onEditar, onToggleModo, mostrarUbi
             </span>
           )}
         </div>
-        <div className="text-xs text-gray-400 flex items-center gap-1 flex-wrap">
-          <span>{producto.categoria}</span>
-          <span>·</span>
-          {(() => { const v = diasParaVencer(producto.vencimiento); return (<><span className={v.cls}>{v.texto}</span><span className="text-gray-300">({v.fechaCorta})</span></>); })()}
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{producto.categoria}</span>
+          <span className={`text-xs ${venc.cls}`}>{venc.texto}</span>
+          <span className="text-xs text-gray-300">({venc.fechaCorta})</span>
         </div>
         {diasStock !== null && diasStock <= 5 && (
           <div className="text-xs text-orange-600 mt-1 font-medium">
@@ -90,7 +104,12 @@ function ProductoItem({ producto, onEliminar, onEditar, onToggleModo, mostrarUbi
       )}
       <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${estadoBadge}`}>{estado.texto}</span>
       <button onClick={() => onEditar(producto)} className="text-gray-300 hover:text-gray-500 text-sm p-0.5 transition-colors">✏️</button>
-      <button onClick={() => onEliminar(producto.id)} className="text-gray-200 hover:text-red-400 text-base p-0.5 transition-colors">✕</button>
+      <button
+        onClick={() => { onEliminar(producto.id); setShowDelete(false); }}
+        className={`text-base p-0.5 transition-all duration-150 ${
+          showDelete ? 'text-red-400 opacity-100' : 'text-gray-300 opacity-0 group-hover:opacity-100 hover:text-red-400'
+        }`}
+      >✕</button>
     </div>
   );
 }
@@ -593,9 +612,14 @@ function App() {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [modalActivo, setModalActivo] = useState(null);
   const [categoriasColapsadas, setCategoriasColapsadas] = useState({});
+  const [filtroEstado, setFiltroEstado] = useState(null);
+  const [busqueda, setBusqueda] = useState('');
 
   const toggleCategoria = (cat) =>
     setCategoriasColapsadas(prev => ({ ...prev, [cat]: prev[cat] === false }));
+
+  const toggleFiltroEstado = (key) =>
+    setFiltroEstado(prev => prev === key ? null : key);
 
   const menuRef = useRef(null);
 
@@ -829,11 +853,31 @@ function App() {
   );
 
   const listaBase = tab === 'todos' ? productos : productos.filter(p => p.ubicacion === tab);
-  const lista = filtroDestino === 'Todos' ? listaBase : listaBase.filter(p => p.destino === filtroDestino);
-  const vencidos = lista.filter(p => getEstado(p.vencimiento).texto === 'Vencido');
-  const porVencer = lista.filter(p => getEstado(p.vencimiento).texto === 'Por vencer');
-  const ok = lista.filter(p => getEstado(p.vencimiento).texto === 'OK');
-  const porAgotar = lista.filter(p => { const d = getDiasStock(p); return d !== null && d <= 3; });
+  const listaDestino = filtroDestino === 'Todos' ? listaBase : listaBase.filter(p => p.destino === filtroDestino);
+
+  // Contadores siempre sobre listaDestino (sin filtros de estado/búsqueda)
+  const vencidos = listaDestino.filter(p => getEstado(p.vencimiento).texto === 'Vencido');
+  const porVencer = listaDestino.filter(p => getEstado(p.vencimiento).texto === 'Por vencer');
+  const ok = listaDestino.filter(p => getEstado(p.vencimiento).texto === 'OK');
+  const porAgotar = listaDestino.filter(p => { const d = getDiasStock(p); return d !== null && d <= 3; });
+
+  // Aplicar filtro de estado
+  const listaEstado = filtroEstado
+    ? listaDestino.filter(p => {
+        if (filtroEstado === 'vencidos') return getEstado(p.vencimiento).texto === 'Vencido';
+        if (filtroEstado === 'porVencer') return getEstado(p.vencimiento).texto === 'Por vencer';
+        if (filtroEstado === 'ok') return getEstado(p.vencimiento).texto === 'OK';
+        if (filtroEstado === 'porAgotar') { const d = getDiasStock(p); return d !== null && d <= 3; }
+        return true;
+      })
+    : listaDestino;
+
+  // Aplicar búsqueda
+  const terminoBusqueda = busqueda.trim().toLowerCase();
+  const lista = terminoBusqueda
+    ? listaEstado.filter(p => p.nombre.toLowerCase().includes(terminoBusqueda))
+    : listaEstado;
+
   const categorias = [...new Set(lista.map(p => p.categoria))];
 
   const TABS = [
@@ -949,25 +993,50 @@ function App() {
         </button>
       </div>
 
+      {/* Barra de búsqueda */}
+      <div className="px-4 py-2 bg-white border-b border-gray-100">
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-sm">🔍</span>
+          <input
+            type="text"
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            placeholder="Buscar producto..."
+            className="w-full pl-8 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition"
+          />
+          {busqueda && (
+            <button
+              onClick={() => setBusqueda('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-base leading-none"
+            >×</button>
+          )}
+        </div>
+      </div>
+
       {/* Contenido */}
       <div className="p-4">
-        {/* Contadores de estado */}
+        {/* Contadores de estado — filtran la lista al hacer clic */}
         <div className="grid grid-cols-4 gap-2 mb-4">
           {[
-            { num: vencidos.length, label: 'Vencidos', cls: 'text-red-600', lista: vencidos, titulo: '🔴 Productos vencidos' },
-            { num: porVencer.length, label: 'Por vencer', cls: 'text-amber-600', lista: porVencer, titulo: '🟡 Por vencer pronto' },
-            { num: porAgotar.length, label: 'Por agotar', cls: 'text-orange-600', lista: porAgotar, titulo: '🟠 Por agotar pronto' },
-            { num: ok.length, label: 'En buen estado', cls: 'text-green-700', lista: ok, titulo: '🟢 En buen estado' },
-          ].map(m => (
-            <div
-              key={m.label}
-              onClick={() => setModalAlerta({ titulo: m.titulo, lista: m.lista })}
-              className="bg-white rounded-xl border border-gray-100 p-3 text-center cursor-pointer hover:border-gray-200 hover:shadow-sm transition-all"
-            >
-              <div className={`text-xl font-semibold ${m.cls}`}>{m.num}</div>
-              <div className="text-xs text-gray-400 mt-1 leading-tight">{m.label}</div>
-            </div>
-          ))}
+            { key: 'vencidos',  num: vencidos.length,  label: 'Vencidos',       numCls: 'text-red-600',   activeCls: 'border-red-300 ring-1 ring-red-200 bg-red-50' },
+            { key: 'porVencer', num: porVencer.length, label: 'Por vencer',     numCls: 'text-amber-600', activeCls: 'border-amber-300 ring-1 ring-amber-200 bg-amber-50' },
+            { key: 'porAgotar', num: porAgotar.length, label: 'Por agotar',     numCls: 'text-orange-600',activeCls: 'border-orange-300 ring-1 ring-orange-200 bg-orange-50' },
+            { key: 'ok',        num: ok.length,        label: 'En buen estado', numCls: 'text-green-700', activeCls: 'border-green-300 ring-1 ring-green-200 bg-green-50' },
+          ].map(m => {
+            const activo = filtroEstado === m.key;
+            return (
+              <div
+                key={m.key}
+                onClick={() => toggleFiltroEstado(m.key)}
+                className={`rounded-xl border p-3 text-center cursor-pointer transition-all ${
+                  activo ? m.activeCls : 'bg-white border-gray-100 hover:border-gray-200 hover:shadow-sm'
+                }`}
+              >
+                <div className={`text-xl font-semibold ${m.numCls}`}>{m.num}</div>
+                <div className="text-xs text-gray-400 mt-1 leading-tight">{m.label}</div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Lista de productos */}
@@ -976,7 +1045,8 @@ function App() {
         ) : (
           <>
             {categorias.map(cat => {
-              const colapsada = categoriasColapsadas[cat] !== false;
+              // Con búsqueda activa, forzar todas expandidas para mostrar resultados
+              const colapsada = terminoBusqueda ? false : categoriasColapsadas[cat] !== false;
               const items = lista.filter(p => p.categoria === cat);
               return (
               <div key={cat} className="mb-4">
@@ -1004,7 +1074,11 @@ function App() {
               );
             })}
             {lista.length === 0 && (
-              <div className="text-center py-10 text-sm text-gray-400">No hay productos aquí todavía</div>
+              <div className="text-center py-10 text-sm text-gray-400">
+                {terminoBusqueda
+                  ? `Sin resultados para "${busqueda}"`
+                  : 'No hay productos aquí todavía'}
+              </div>
             )}
           </>
         )}
