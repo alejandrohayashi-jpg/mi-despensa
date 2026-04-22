@@ -22,9 +22,11 @@ function getDiasStock(producto) {
   return Math.floor(cantidad / consumoDiario);
 }
 
-function ProductoItem({ producto, onEliminar, onEditar, mostrarUbicacion }) {
+function ProductoItem({ producto, onEliminar, onEditar, onToggleModo, mostrarUbicacion }) {
   const estado = getEstado(producto.vencimiento);
   const diasStock = getDiasStock(producto);
+  const tieneConsumo = producto.frecuencia_consumo > 0;
+  const modo = producto.modo_consumo || 'manual';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'white', border: '1px solid #eee', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
       <div style={{ flex: 1 }}>
@@ -45,6 +47,15 @@ function ProductoItem({ producto, onEliminar, onEditar, mostrarUbicacion }) {
         )}
       </div>
       <div style={{ fontSize: 13, color: '#666', marginRight: 6 }}>{producto.cantidad} {producto.unidad}</div>
+      {tieneConsumo && (
+        <button
+          onClick={() => onToggleModo(producto)}
+          title={modo === 'automatico' ? 'Pausar descuento automático' : 'Activar descuento automático'}
+          style={{ background: 'none', border: '1px solid #eee', borderRadius: 6, cursor: 'pointer', fontSize: 13, padding: '2px 6px', color: modo === 'automatico' ? '#3B6D11' : '#aaa' }}
+        >
+          {modo === 'automatico' ? '▶️' : '⏸️'}
+        </button>
+      )}
       <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, fontWeight: 500, background: estado.bg, color: estado.color, marginRight: 6 }}>{estado.texto}</span>
       <button onClick={() => onEditar(producto)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: 14, padding: '0 2px' }}>✏️</button>
       <button onClick={() => onEliminar(producto.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: 16, padding: '0 2px' }}>✕</button>
@@ -112,8 +123,8 @@ function ModalDestino({ hogarId, onCerrar, onGuardado }) {
 function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos }) {
   const [form, setForm] = useState(
     productoEditar
-      ? { ...productoEditar, cantidad: String(productoEditar.cantidad), frecuencia_consumo: String(productoEditar.frecuencia_consumo || ''), unidad_consumo: productoEditar.unidad_consumo || 'unidad/día' }
-      : { nombre: '', categoria: '', cantidad: '', unidad: 'un.', vencimiento: '', destino: destinos[0]?.nombre || 'Casa General', frecuencia_consumo: '', unidad_consumo: 'unidad/día' }
+      ? { ...productoEditar, cantidad: String(productoEditar.cantidad), frecuencia_consumo: String(productoEditar.frecuencia_consumo || ''), unidad_consumo: productoEditar.unidad_consumo || 'unidad/día', modo_consumo: productoEditar.modo_consumo || 'manual' }
+      : { nombre: '', categoria: '', cantidad: '', unidad: 'un.', vencimiento: '', destino: destinos[0]?.nombre || 'Casa General', frecuencia_consumo: '', unidad_consumo: 'unidad/día', modo_consumo: 'manual' }
   );
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
   const handleGuardar = () => {
@@ -204,6 +215,27 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos }) {
               </select>
             </div>
           </div>
+          {Number(form.frecuencia_consumo) > 0 && (
+            <div>
+              <div style={labelStyle}>Modo de consumo</div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                {[
+                  { value: 'manual', label: '✋ Manual' },
+                  { value: 'automatico', label: '▶️ Automático' },
+                  { value: 'pausado', label: '⏸️ Pausado' },
+                ].map(op => (
+                  <button
+                    key={op.value}
+                    type="button"
+                    onClick={() => setForm({ ...form, modo_consumo: op.value })}
+                    style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: form.modo_consumo === op.value ? '2px solid #333' : '1px solid #ddd', background: form.modo_consumo === op.value ? '#333' : 'white', color: form.modo_consumo === op.value ? 'white' : '#666', fontSize: 12, cursor: 'pointer', fontWeight: form.modo_consumo === op.value ? 600 : 400 }}
+                  >
+                    {op.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
           <button onClick={onCerrar} style={{ flex: 1, padding: '10px', border: '1px solid #ddd', borderRadius: 8, background: 'white', cursor: 'pointer', fontSize: 14 }}>Cancelar</button>
@@ -466,6 +498,12 @@ function App() {
     cargarMiembros();
   };
 
+  const handleToggleModo = async (producto) => {
+    const nuevoModo = producto.modo_consumo === 'automatico' ? 'pausado' : 'automatico';
+    await supabase.from('productos').update({ modo_consumo: nuevoModo }).eq('id', producto.id);
+    cargarProductos();
+  };
+
   const handleGuardar = async (producto) => {
     const ubicacion = tab === 'todos' ? 'refrigerador' : tab;
     if (productoEditar) {
@@ -649,7 +687,7 @@ function App() {
               <div key={cat} style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{cat}</div>
                 {lista.filter(p => p.categoria === cat).map(p => (
-                  <ProductoItem key={p.id} producto={p} onEliminar={handleEliminar} onEditar={handleEditar} mostrarUbicacion={tab === 'todos'} />
+                  <ProductoItem key={p.id} producto={p} onEliminar={handleEliminar} onEditar={handleEditar} onToggleModo={handleToggleModo} mostrarUbicacion={tab === 'todos'} />
                 ))}
               </div>
             ))}
