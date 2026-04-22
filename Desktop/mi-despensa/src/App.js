@@ -489,7 +489,7 @@ function App() {
   const [categoriasColapsadas, setCategoriasColapsadas] = useState({});
 
   const toggleCategoria = (cat) =>
-    setCategoriasColapsadas(prev => ({ ...prev, [cat]: !prev[cat] }));
+    setCategoriasColapsadas(prev => ({ ...prev, [cat]: prev[cat] === false }));
 
   const menuRef = useRef(null);
 
@@ -823,7 +823,7 @@ function App() {
         ) : (
           <>
             {categorias.map(cat => {
-              const colapsada = !!categoriasColapsadas[cat];
+              const colapsada = categoriasColapsadas[cat] !== false;
               const items = lista.filter(p => p.categoria === cat);
               return (
               <div key={cat} className="mb-4">
