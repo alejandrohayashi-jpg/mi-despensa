@@ -39,12 +39,12 @@ Deno.serve(async (req) => {
     const esSemanal = p.unidad_consumo?.includes('semana');
     const consumoDiario = esSemanal ? p.frecuencia_consumo / 7 : p.frecuencia_consumo;
     const cantidadAntes = p.cantidad;
-    const nuevaCantidad = p.cantidad - consumoDiario;
+    const nuevaCantidad = Math.floor(p.cantidad - consumoDiario);
 
     if (nuevaCantidad <= 0) {
       return { id: p.id, nombre: p.nombre, hogar_id: p.hogar_id, cantidadAntes, campos: { cantidad: 0, modo_consumo: 'pausado' } };
     }
-    return { id: p.id, nombre: p.nombre, hogar_id: p.hogar_id, cantidadAntes, campos: { cantidad: Math.round(nuevaCantidad * 1000) / 1000 } };
+    return { id: p.id, nombre: p.nombre, hogar_id: p.hogar_id, cantidadAntes, campos: { cantidad: nuevaCantidad } };
   });
 
   // 3. Ejecutar updates e inserts en historial en paralelo
