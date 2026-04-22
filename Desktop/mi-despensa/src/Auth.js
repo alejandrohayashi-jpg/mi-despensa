@@ -77,7 +77,8 @@ export default function Auth() {
       }
 
       const { data, error } = await supabase.auth.signUp({ email, password });
-      console.log('[unirse] signUp resultado:', { user: data?.user?.id ?? null, error });
+      console.log('[unirse] signUp — data.user:', data?.user);
+      console.log('[unirse] signUp — error:', error);
       if (error) { setMensaje(error.message); setCargando(false); return; }
       if (!data.user) {
         setMensaje('Este email ya está registrado. Intentá iniciar sesión.');
@@ -85,16 +86,21 @@ export default function Auth() {
         return;
       }
 
-      console.log('[unirse] Insertando miembro en hogar:', hogares[0].id, '— estado: pendiente');
-      const { error: errorInsert } = await supabase.from('miembros_hogar').insert([{
+      const payload = {
         hogar_id: hogares[0].id,
         user_id: data.user.id,
         rol: 'miembro',
         nombre,
         estado: 'pendiente'
-      }]);
+      };
+      console.log('[unirse] Payload insert miembro:', payload);
+      const { data: insertData, error: errorInsert } = await supabase
+        .from('miembros_hogar')
+        .insert([payload])
+        .select();
 
-      console.log('[unirse] Resultado insert miembro:', errorInsert ? `ERROR ${errorInsert.code}: ${errorInsert.message}` : 'OK');
+      console.log('[unirse] Insert miembro — data:', insertData);
+      console.log('[unirse] Insert miembro — error:', errorInsert);
 
       if (errorInsert) {
         setMensaje('Error al enviar la solicitud. Intenta de nuevo.');
