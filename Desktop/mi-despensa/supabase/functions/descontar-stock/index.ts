@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
   // 1. Traer todos los productos en modo automático con consumo definido
   const { data: productos, error } = await supabase
     .from('productos')
-    .select('id, cantidad, frecuencia_consumo, unidad_consumo')
+    .select('id, nombre, cantidad, frecuencia_consumo, unidad_consumo, hogar_id')
     .eq('modo_consumo', 'automatico')
     .gt('frecuencia_consumo', 0);
 
@@ -34,23 +34,36 @@ Deno.serve(async (req) => {
     });
   }
 
-  // 2. Calcular y aplicar descuento para cada producto
+  // 2. Calcular descuentos
   const actualizaciones = productos.map((p) => {
     const esSemanal = p.unidad_consumo?.includes('semana');
     const consumoDiario = esSemanal ? p.frecuencia_consumo / 7 : p.frecuencia_consumo;
+    const cantidadAntes = p.cantidad;
     const nuevaCantidad = p.cantidad - consumoDiario;
 
     if (nuevaCantidad <= 0) {
-      return { id: p.id, cantidad: 0, modo_consumo: 'pausado' };
+      return { id: p.id, nombre: p.nombre, hogar_id: p.hogar_id, cantidadAntes, campos: { cantidad: 0, modo_consumo: 'pausado' } };
     }
-    return { id: p.id, cantidad: Math.round(nuevaCantidad * 1000) / 1000 };
+    return { id: p.id, nombre: p.nombre, hogar_id: p.hogar_id, cantidadAntes, campos: { cantidad: Math.round(nuevaCantidad * 1000) / 1000 } };
   });
 
-  // 3. Ejecutar updates en paralelo
+  // 3. Ejecutar updates e inserts en historial en paralelo
   const resultados = await Promise.all(
-    actualizaciones.map(({ id, ...campos }) =>
-      supabase.from('productos').update(campos).eq('id', id)
-    )
+    actualizaciones.map(async ({ id, nombre, hogar_id, cantidadAntes, campos }) => {
+      const updateResult = await supabase.from('productos').update(campos).eq('id', id);
+      if (!updateResult.error) {
+        await supabase.from('historial').insert([{
+          hogar_id,
+          producto_id: id,
+          producto_nombre: nombre,
+          tipo: 'descuento_automatico',
+          cantidad_antes: cantidadAntes,
+          cantidad_despues: campos.cantidad,
+          descripcion: campos.modo_consumo === 'pausado' ? 'Stock agotado, pausado automáticamente' : 'Descuento automático diario',
+        }]);
+      }
+      return updateResult;
+    })
   );
 
   const errores = resultados.filter((r) => r.error).map((r) => r.error?.message);
@@ -63,7 +76,7 @@ Deno.serve(async (req) => {
     );
   }
 
-  const pausados = actualizaciones.filter((a) => a.modo_consumo === 'pausado').length;
+  const pausados = actualizaciones.filter((a) => a.campos.modo_consumo === 'pausado').length;
   console.log(`Procesados: ${actualizaciones.length}, pausados por stock agotado: ${pausados}`);
 
   return new Response(

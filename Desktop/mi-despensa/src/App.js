@@ -467,6 +467,92 @@ function ModalGestionCuenta({ esAdmin, hogarId, nombreHogar, onNombreHogarCambia
   );
 }
 
+const TIPO_LABEL = {
+  agregado:             { label: 'Agregado',      cls: 'bg-green-50 text-green-700' },
+  edicion_manual:       { label: 'Editado',        cls: 'bg-blue-50 text-blue-700' },
+  eliminado:            { label: 'Eliminado',      cls: 'bg-red-50 text-red-700' },
+  cambio_modo:          { label: 'Modo',           cls: 'bg-purple-50 text-purple-700' },
+  descuento_automatico: { label: 'Descuento auto', cls: 'bg-amber-50 text-amber-700' },
+  reversion:            { label: 'Reversión',      cls: 'bg-gray-100 text-gray-600' },
+};
+
+function ModalHistorial({ hogarId, onCerrar, onDeshacer }) {
+  const [historial, setHistorial] = useState([]);
+  const [cargando, setCargando] = useState(true);
+
+  const cargar = async () => {
+    setCargando(true);
+    const { data } = await supabase
+      .from('historial')
+      .select('*')
+      .eq('hogar_id', hogarId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    setHistorial(data || []);
+    setCargando(false);
+  };
+
+  useEffect(() => { cargar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleDeshacer = async (h) => {
+    await onDeshacer(h);
+    await cargar();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-xl">
+        <div className="flex justify-between items-center p-6 pb-4 shrink-0">
+          <h2 className="text-base font-semibold text-gray-900">📋 Historial</h2>
+          <button onClick={onCerrar} className="text-gray-400 hover:text-gray-600 text-xl leading-none transition-colors">✕</button>
+        </div>
+        <div className="overflow-y-auto px-6 pb-6">
+          {cargando ? (
+            <p className="text-sm text-gray-400 text-center py-8">Cargando...</p>
+          ) : historial.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">Sin movimientos aún</p>
+          ) : (
+            historial.map((h, i) => {
+              const tipo = TIPO_LABEL[h.tipo] || { label: h.tipo, cls: 'bg-gray-100 text-gray-600' };
+              const fecha = new Date(h.created_at).toLocaleString('es-CL', {
+                day: '2-digit', month: '2-digit', year: '2-digit',
+                hour: '2-digit', minute: '2-digit',
+              });
+              return (
+                <div key={h.id} className={`py-3 ${i < historial.length - 1 ? 'border-b border-gray-50' : ''}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="text-sm font-medium text-gray-900">{h.producto_nombre}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tipo.cls}`}>{tipo.label}</span>
+                      </div>
+                      <div className="text-xs text-gray-400 flex flex-wrap gap-x-2">
+                        <span>{fecha}</span>
+                        {h.cantidad_antes !== null && h.cantidad_despues !== null && (
+                          <span>{h.cantidad_antes} → {h.cantidad_despues}</span>
+                        )}
+                        {h.descripcion && <span className="text-gray-300">· {h.descripcion}</span>}
+                      </div>
+                    </div>
+                    {h.tipo === 'descuento_automatico' && (
+                      <button
+                        onClick={() => handleDeshacer(h)}
+                        className="shrink-0 text-xs px-2 py-1 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition-colors"
+                      >
+                        ↩ Deshacer
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [session, setSession] = useState(null);
   const [hogarId, setHogarId] = useState(null);
@@ -572,6 +658,33 @@ function App() {
     setMiembros(data || []);
   };
 
+  const registrarHistorial = async (producto, tipo, cantidadAntes, cantidadDespues, descripcion) => {
+    await supabase.from('historial').insert([{
+      hogar_id: hogarId,
+      producto_id: producto.id || null,
+      producto_nombre: producto.nombre,
+      tipo,
+      cantidad_antes: cantidadAntes,
+      cantidad_despues: cantidadDespues,
+      descripcion,
+    }]);
+  };
+
+  const handleDeshacer = async (movimiento) => {
+    await supabase
+      .from('productos')
+      .update({ cantidad: movimiento.cantidad_antes })
+      .eq('id', movimiento.producto_id);
+    await registrarHistorial(
+      { id: movimiento.producto_id, nombre: movimiento.producto_nombre },
+      'reversion',
+      movimiento.cantidad_despues,
+      movimiento.cantidad_antes,
+      'Reversión de descuento automático',
+    );
+    cargarProductos();
+  };
+
   const handleAprobar = async (userId) => {
     await supabase.from('miembros_hogar').update({ estado: 'activo' }).eq('hogar_id', hogarId).eq('user_id', userId);
     cargarSolicitudes();
@@ -591,6 +704,7 @@ function App() {
   const handleToggleModo = async (producto) => {
     const nuevoModo = producto.modo_consumo === 'automatico' ? 'pausado' : 'automatico';
     await supabase.from('productos').update({ modo_consumo: nuevoModo }).eq('id', producto.id);
+    await registrarHistorial(producto, 'cambio_modo', producto.cantidad, producto.cantidad, `Modo → ${nuevoModo}`);
     cargarProductos();
   };
 
@@ -598,14 +712,27 @@ function App() {
     const ubicacion = tab === 'todos' ? 'refrigerador' : tab;
     if (productoEditar) {
       await supabase.from('productos').update(producto).eq('id', producto.id);
+      await registrarHistorial(producto, 'edicion_manual', productoEditar.cantidad, producto.cantidad, 'Edición manual');
     } else {
-      await supabase.from('productos').insert([{ ...producto, ubicacion, hogar_id: hogarId }]);
+      const { data: nuevo } = await supabase
+        .from('productos')
+        .insert([{ ...producto, ubicacion, hogar_id: hogarId }])
+        .select()
+        .single();
+      await registrarHistorial(
+        nuevo || { id: null, nombre: producto.nombre },
+        'agregado', null, producto.cantidad, 'Producto agregado',
+      );
     }
     cargarProductos();
   };
 
   const handleEliminar = async (id) => {
+    const producto = productos.find(p => p.id === id);
     await supabase.from('productos').delete().eq('id', id);
+    if (producto) {
+      await registrarHistorial(producto, 'eliminado', producto.cantidad, null, 'Producto eliminado');
+    }
     cargarProductos();
     setModalAlerta(null);
   };
@@ -733,6 +860,12 @@ function App() {
                 className="flex items-center w-full px-3 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-left"
               >
                 ⚙️ Gestión de cuenta
+              </button>
+              <button
+                onClick={() => { setModalActivo('historial'); setMenuAbierto(false); }}
+                className="flex items-center w-full px-3 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-left"
+              >
+                📋 Historial
               </button>
               <div className="border-t border-gray-100 my-1 mx-1" />
               <button
@@ -906,6 +1039,13 @@ function App() {
           nombreHogar={nombreHogar}
           onNombreHogarCambiado={setNombreHogar}
           onCerrar={() => setModalActivo(null)}
+        />
+      )}
+      {modalActivo === 'historial' && (
+        <ModalHistorial
+          hogarId={hogarId}
+          onCerrar={() => setModalActivo(null)}
+          onDeshacer={handleDeshacer}
         />
       )}
     </div>
