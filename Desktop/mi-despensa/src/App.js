@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabase';
 import Auth from './Auth';
 
@@ -183,14 +183,149 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos }) {
   );
 }
 
+function ModalGestionHogar({ solicitudes, miembros, onAprobar, onRechazar, onEliminarMiembro, onCerrar }) {
+  const overlay = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 };
+  return (
+    <div style={overlay}>
+      <div style={{ background: 'white', borderRadius: 14, padding: 24, width: '90%', maxWidth: 440, maxHeight: '85vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>🏠 Gestionar hogar</h2>
+          <button onClick={onCerrar} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#999' }}>✕</button>
+        </div>
+
+        {solicitudes.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#92400E', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+              Solicitudes pendientes ({solicitudes.length})
+            </div>
+            {solicitudes.map((s, i) => (
+              <div key={s.user_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < solicitudes.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>{s.nombre || 'Usuario'}</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => onAprobar(s.user_id)} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#3B6D11', color: 'white', cursor: 'pointer', fontSize: 13 }}>✅ Aprobar</button>
+                  <button onClick={() => onRechazar(s.user_id)} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#A32D2D', color: 'white', cursor: 'pointer', fontSize: 13 }}>✕ Rechazar</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+            Miembros activos ({miembros.length})
+          </div>
+          {miembros.length === 0 ? (
+            <p style={{ color: '#aaa', fontSize: 14 }}>Sin miembros registrados</p>
+          ) : (
+            miembros.map((m, i) => (
+              <div key={m.user_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < miembros.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 14 }}>{m.nombre || 'Usuario'}</span>
+                  {m.rol === 'admin' && (
+                    <span style={{ fontSize: 10, background: '#333', color: 'white', borderRadius: 4, padding: '2px 6px', fontWeight: 500 }}>Admin</span>
+                  )}
+                </div>
+                {m.rol !== 'admin' && (
+                  <button onClick={() => onEliminarMiembro(m.user_id)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #eee', background: 'white', color: '#A32D2D', cursor: 'pointer', fontSize: 13 }}>
+                    Eliminar
+                  </button>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModalGestionCuenta({ esAdmin, hogarId, nombreHogar, onNombreHogarCambiado, onCerrar }) {
+  const [password, setPassword] = useState('');
+  const [nuevoNombre, setNuevoNombre] = useState(nombreHogar);
+  const [mensaje, setMensaje] = useState('');
+  const [cargando, setCargando] = useState(false);
+
+  const handleCambiarPassword = async () => {
+    if (!password || password.length < 6) {
+      setMensaje('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    setCargando(true);
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) setMensaje('Error: ' + error.message);
+    else { setMensaje('✅ Contraseña actualizada'); setPassword(''); }
+    setCargando(false);
+  };
+
+  const handleCambiarNombreHogar = async () => {
+    if (!nuevoNombre.trim()) { setMensaje('El nombre no puede estar vacío'); return; }
+    setCargando(true);
+    await supabase.from('hogares').update({ nombre: nuevoNombre.trim() }).eq('id', hogarId);
+    onNombreHogarCambiado(nuevoNombre.trim());
+    setMensaje('✅ Nombre del hogar actualizado');
+    setCargando(false);
+  };
+
+  const inputStyle = { width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, boxSizing: 'border-box', marginTop: 4 };
+  const labelStyle = { fontSize: 12, color: '#666', fontWeight: 500 };
+
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
+      <div style={{ background: 'white', borderRadius: 14, padding: 24, width: '90%', maxWidth: 400, maxHeight: '85vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>⚙️ Gestión de cuenta</h2>
+          <button onClick={onCerrar} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#999' }}>✕</button>
+        </div>
+
+        <div style={{ marginBottom: esAdmin ? 24 : 0 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Cambiar contraseña</div>
+          <div style={labelStyle}>Nueva contraseña</div>
+          <input
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder="Mínimo 6 caracteres"
+            style={inputStyle}
+          />
+          <button onClick={handleCambiarPassword} disabled={cargando} style={{ marginTop: 10, padding: '9px 16px', border: 'none', borderRadius: 8, background: '#333', color: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+            {cargando ? 'Guardando...' : 'Actualizar contraseña'}
+          </button>
+        </div>
+
+        {esAdmin && (
+          <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 24 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Nombre del hogar</div>
+            <div style={labelStyle}>Nombre</div>
+            <input
+              value={nuevoNombre}
+              onChange={e => setNuevoNombre(e.target.value)}
+              placeholder="Nombre del hogar"
+              style={inputStyle}
+            />
+            <button onClick={handleCambiarNombreHogar} disabled={cargando} style={{ marginTop: 10, padding: '9px 16px', border: 'none', borderRadius: 8, background: '#333', color: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+              {cargando ? 'Guardando...' : 'Cambiar nombre'}
+            </button>
+          </div>
+        )}
+
+        {mensaje && (
+          <p style={{ fontSize: 13, marginTop: 16, color: mensaje.startsWith('✅') ? '#3B6D11' : '#A32D2D' }}>{mensaje}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [session, setSession] = useState(null);
   const [hogarId, setHogarId] = useState(null);
+  const [nombreHogar, setNombreHogar] = useState('');
   const [tab, setTab] = useState('todos');
   const [filtroDestino, setFiltroDestino] = useState('Todos');
   const [productos, setProductos] = useState([]);
   const [destinos, setDestinos] = useState([]);
   const [solicitudes, setSolicitudes] = useState([]);
+  const [miembros, setMiembros] = useState([]);
   const [esAdmin, setEsAdmin] = useState(false);
   const [estadoMiembro, setEstadoMiembro] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -198,6 +333,10 @@ function App() {
   const [productoEditar, setProductoEditar] = useState(null);
   const [modalAlerta, setModalAlerta] = useState(null);
   const [mostrarModalDestino, setMostrarModalDestino] = useState(false);
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const [modalActivo, setModalActivo] = useState(null);
+
+  const menuRef = useRef(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
@@ -208,6 +347,15 @@ function App() {
     if (session) cargarHogar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
+
+  useEffect(() => {
+    if (!menuAbierto) return;
+    const handleClickFuera = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuAbierto(false);
+    };
+    document.addEventListener('mousedown', handleClickFuera);
+    return () => document.removeEventListener('mousedown', handleClickFuera);
+  }, [menuAbierto]);
 
   const cargarHogar = async () => {
     const { data } = await supabase
@@ -224,9 +372,14 @@ function App() {
 
     if (estado === 'activo') {
       setHogarId(data.hogar_id);
+      const { data: hogar } = await supabase.from('hogares').select('nombre').eq('id', data.hogar_id).single();
+      if (hogar) setNombreHogar(hogar.nombre);
       cargarProductos(data.hogar_id);
       cargarDestinos(data.hogar_id);
-      if (data.rol === 'admin') cargarSolicitudes(data.hogar_id);
+      if (data.rol === 'admin') {
+        cargarSolicitudes(data.hogar_id);
+        cargarMiembros(data.hogar_id);
+      }
     } else {
       setCargando(false);
     }
@@ -253,22 +406,29 @@ function App() {
     setSolicitudes(data || []);
   };
 
-  const handleAprobar = async (userId) => {
-    await supabase
+  const cargarMiembros = async (hid) => {
+    const { data } = await supabase
       .from('miembros_hogar')
-      .update({ estado: 'activo' })
-      .eq('hogar_id', hogarId)
-      .eq('user_id', userId);
+      .select('*')
+      .eq('hogar_id', hid || hogarId)
+      .eq('estado', 'activo');
+    setMiembros(data || []);
+  };
+
+  const handleAprobar = async (userId) => {
+    await supabase.from('miembros_hogar').update({ estado: 'activo' }).eq('hogar_id', hogarId).eq('user_id', userId);
     cargarSolicitudes();
+    cargarMiembros();
   };
 
   const handleRechazar = async (userId) => {
-    await supabase
-      .from('miembros_hogar')
-      .update({ estado: 'rechazado' })
-      .eq('hogar_id', hogarId)
-      .eq('user_id', userId);
+    await supabase.from('miembros_hogar').update({ estado: 'rechazado' }).eq('hogar_id', hogarId).eq('user_id', userId);
     cargarSolicitudes();
+  };
+
+  const handleEliminarMiembro = async (userId) => {
+    await supabase.from('miembros_hogar').delete().eq('hogar_id', hogarId).eq('user_id', userId);
+    cargarMiembros();
   };
 
   const handleGuardar = async (producto) => {
@@ -349,14 +509,62 @@ function App() {
     { id: 'closet', label: '🗄️ Despensa' },
   ];
 
+  const menuItemStyle = {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    width: '100%', padding: '10px 12px', border: 'none', background: 'none',
+    cursor: 'pointer', fontSize: 14, textAlign: 'left', borderRadius: 8, color: '#333',
+  };
+
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', fontFamily: 'sans-serif', background: '#f5f5f5', minHeight: '100vh' }}>
       <div style={{ background: 'white', padding: '16px 20px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Coco&Milo House</h1>
+          <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{nombreHogar || '🏠'}</h1>
           <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>Inventario del hogar</div>
         </div>
-        <button onClick={() => supabase.auth.signOut()} style={{ fontSize: 12, color: '#888', background: 'none', border: '1px solid #eee', borderRadius: 8, padding: '4px 10px', cursor: 'pointer' }}>Salir</button>
+
+        <div ref={menuRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => setMenuAbierto(!menuAbierto)}
+            style={{ position: 'relative', fontSize: 18, background: 'none', border: '1px solid #eee', borderRadius: 8, width: 36, height: 36, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            👤
+            {esAdmin && solicitudes.length > 0 && (
+              <span style={{ position: 'absolute', top: -4, right: -4, background: '#A32D2D', color: 'white', borderRadius: '50%', width: 16, height: 16, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
+                {solicitudes.length}
+              </span>
+            )}
+          </button>
+
+          {menuAbierto && (
+            <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: 'white', border: '1px solid #eee', borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.1)', zIndex: 150, minWidth: 220, padding: 6 }}>
+              {esAdmin && (
+                <button
+                  onClick={() => { setModalActivo('hogar'); setMenuAbierto(false); }}
+                  style={menuItemStyle}
+                >
+                  <span>🏠 Gestionar hogar</span>
+                  {solicitudes.length > 0 && (
+                    <span style={{ background: '#A32D2D', color: 'white', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 600 }}>{solicitudes.length}</span>
+                  )}
+                </button>
+              )}
+              <button
+                onClick={() => { setModalActivo('cuenta'); setMenuAbierto(false); }}
+                style={menuItemStyle}
+              >
+                ⚙️ Gestión de cuenta
+              </button>
+              <div style={{ borderTop: '1px solid #f0f0f0', margin: '4px 6px' }} />
+              <button
+                onClick={() => supabase.auth.signOut()}
+                style={{ ...menuItemStyle, color: '#A32D2D' }}
+              >
+                → Cerrar sesión
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div style={{ display: 'flex', background: 'white', borderBottom: '1px solid #eee' }}>
@@ -382,30 +590,6 @@ function App() {
       </div>
 
       <div style={{ padding: 16 }}>
-        {esAdmin && solicitudes.length > 0 && (
-          <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 12, padding: 16, marginBottom: 16 }}>
-            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12, color: '#92400E' }}>
-              📬 Solicitudes de acceso ({solicitudes.length})
-            </div>
-            {solicitudes.map((s, i) => (
-              <div key={s.user_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: i === 0 ? 0 : 10, marginTop: i === 0 ? 0 : 10, borderTop: i === 0 ? 'none' : '1px solid #FDE68A' }}>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 500 }}>{s.nombre || 'Usuario'}</div>
-                  <div style={{ fontSize: 11, color: '#aaa' }}>{s.user_id}</div>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => handleAprobar(s.user_id)} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', background: '#3B6D11', color: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
-                    ✅ Aprobar
-                  </button>
-                  <button onClick={() => handleRechazar(s.user_id)} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', background: '#A32D2D', color: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
-                    ✕ Rechazar
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 16 }}>
           {[
             { num: vencidos.length, label: 'Vencidos', color: '#A32D2D', lista: vencidos, titulo: '🔴 Productos vencidos' },
@@ -446,6 +630,25 @@ function App() {
       {modalAlerta && <ModalAlerta titulo={modalAlerta.titulo} productos={modalAlerta.lista} onCerrar={() => setModalAlerta(null)} onEliminar={handleEliminar} onEditar={handleEditar} />}
       {mostrarFormulario && <FormularioProducto onGuardar={handleGuardar} onCerrar={handleCerrar} productoEditar={productoEditar} destinos={destinos} />}
       {mostrarModalDestino && <ModalDestino hogarId={hogarId} onCerrar={() => setMostrarModalDestino(false)} onGuardado={() => cargarDestinos()} />}
+      {modalActivo === 'hogar' && (
+        <ModalGestionHogar
+          solicitudes={solicitudes}
+          miembros={miembros}
+          onAprobar={handleAprobar}
+          onRechazar={handleRechazar}
+          onEliminarMiembro={handleEliminarMiembro}
+          onCerrar={() => setModalActivo(null)}
+        />
+      )}
+      {modalActivo === 'cuenta' && (
+        <ModalGestionCuenta
+          esAdmin={esAdmin}
+          hogarId={hogarId}
+          nombreHogar={nombreHogar}
+          onNombreHogarCambiado={setNombreHogar}
+          onCerrar={() => setModalActivo(null)}
+        />
+      )}
     </div>
   );
 }
