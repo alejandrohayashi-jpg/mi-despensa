@@ -27,55 +27,71 @@ function ProductoItem({ producto, onEliminar, onEditar, onToggleModo, mostrarUbi
   const diasStock = getDiasStock(producto);
   const tieneConsumo = producto.frecuencia_consumo > 0;
   const modo = producto.modo_consumo || 'manual';
+
+  const estadoBadge =
+    estado.texto === 'Vencido'
+      ? 'bg-red-50 text-red-700'
+      : estado.texto === 'Por vencer'
+      ? 'bg-amber-50 text-amber-700'
+      : 'bg-green-50 text-green-700';
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'white', border: '1px solid #eee', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 500, fontSize: 14 }}>{producto.nombre}</span>
-          <span style={{ fontSize: 11, padding: '1px 8px', borderRadius: 20, fontWeight: 500, background: '#f0f0f0', color: '#555' }}>{producto.destino}</span>
+    <div className="flex items-center gap-3 bg-white border border-gray-100 rounded-xl px-4 py-3 mb-2 hover:border-gray-200 transition-colors">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
+          <span className="font-medium text-sm text-gray-900">{producto.nombre}</span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">{producto.destino}</span>
           {mostrarUbicacion && (
-            <span style={{ fontSize: 11, padding: '1px 8px', borderRadius: 20, background: '#e8e8e8', color: '#666' }}>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-400">
               {producto.ubicacion === 'refrigerador' ? '🧊 Refri' : '🗄️ Despensa'}
             </span>
           )}
         </div>
-        <div style={{ fontSize: 12, color: '#888' }}>{producto.categoria} · Vence {producto.vencimiento}</div>
+        <div className="text-xs text-gray-400">{producto.categoria} · Vence {producto.vencimiento}</div>
         {diasStock !== null && diasStock <= 5 && (
-          <div style={{ fontSize: 11, color: '#C2410C', marginTop: 2, fontWeight: 500 }}>
+          <div className="text-xs text-orange-600 mt-1 font-medium">
             ⚡ Se agota en ~{diasStock} día{diasStock !== 1 ? 's' : ''}
           </div>
         )}
       </div>
-      <div style={{ fontSize: 13, color: '#666', marginRight: 6 }}>{producto.cantidad} {producto.unidad}</div>
+      <div className="text-xs text-gray-500 font-medium whitespace-nowrap">{producto.cantidad} {producto.unidad}</div>
       {tieneConsumo && (
         <button
           onClick={() => onToggleModo(producto)}
           title={modo === 'automatico' ? 'Pausar descuento automático' : 'Activar descuento automático'}
-          style={{ background: 'none', border: '1px solid #eee', borderRadius: 6, cursor: 'pointer', fontSize: 13, padding: '2px 6px', color: modo === 'automatico' ? '#3B6D11' : '#aaa' }}
+          className={`border rounded-lg px-2 py-1 text-xs cursor-pointer transition-colors ${
+            modo === 'automatico'
+              ? 'border-green-200 text-green-700 bg-green-50 hover:bg-green-100'
+              : 'border-gray-200 text-gray-400 bg-white hover:bg-gray-50'
+          }`}
         >
           {modo === 'automatico' ? '▶️' : '⏸️'}
         </button>
       )}
-      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, fontWeight: 500, background: estado.bg, color: estado.color, marginRight: 6 }}>{estado.texto}</span>
-      <button onClick={() => onEditar(producto)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: 14, padding: '0 2px' }}>✏️</button>
-      <button onClick={() => onEliminar(producto.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: 16, padding: '0 2px' }}>✕</button>
+      <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${estadoBadge}`}>{estado.texto}</span>
+      <button onClick={() => onEditar(producto)} className="text-gray-300 hover:text-gray-500 text-sm p-0.5 transition-colors">✏️</button>
+      <button onClick={() => onEliminar(producto.id)} className="text-gray-200 hover:text-red-400 text-base p-0.5 transition-colors">✕</button>
     </div>
   );
 }
 
 function ModalAlerta({ titulo, productos, onCerrar, onEliminar, onEditar }) {
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
-      <div style={{ background: 'white', borderRadius: 14, padding: 24, width: '90%', maxWidth: 420, maxHeight: '80vh', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>{titulo}</h2>
-          <button onClick={onCerrar} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#999' }}>✕</button>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+      <div className="bg-white rounded-2xl w-full max-w-md max-h-[80vh] overflow-y-auto shadow-xl">
+        <div className="flex justify-between items-center p-6 pb-4">
+          <h2 className="text-base font-semibold text-gray-900">{titulo}</h2>
+          <button onClick={onCerrar} className="text-gray-400 hover:text-gray-600 text-xl leading-none transition-colors">✕</button>
         </div>
-        {productos.length === 0 ? (
-          <p style={{ color: '#aaa', textAlign: 'center', padding: 20 }}>No hay productos en esta categoría</p>
-        ) : (
-          productos.map(p => <ProductoItem key={p.id} producto={p} onEliminar={onEliminar} onEditar={onEditar} mostrarUbicacion={true} />)
-        )}
+        <div className="px-6 pb-6">
+          {productos.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">No hay productos en esta categoría</p>
+          ) : (
+            productos.map(p => (
+              <ProductoItem key={p.id} producto={p} onEliminar={onEliminar} onEditar={onEditar} mostrarUbicacion={true} onToggleModo={() => {}} />
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
@@ -93,27 +109,46 @@ function ModalDestino({ hogarId, onCerrar, onGuardado }) {
   };
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
-      <div style={{ background: 'white', borderRadius: 14, padding: 24, width: '90%', maxWidth: 380 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Nuevo destino</h2>
-          <button onClick={onCerrar} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#999' }}>✕</button>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl p-6">
+        <div className="flex justify-between items-center mb-5">
+          <h2 className="text-base font-semibold text-gray-900">Nuevo destino</h2>
+          <button onClick={onCerrar} className="text-gray-400 hover:text-gray-600 text-xl leading-none transition-colors">✕</button>
         </div>
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 12, color: '#666', fontWeight: 500, marginBottom: 4 }}>Nombre</div>
-          <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Agustín" style={{ width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} />
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Nombre</label>
+          <input
+            value={nombre}
+            onChange={e => setNombre(e.target.value)}
+            placeholder="Ej: Agustín"
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1"
+          />
         </div>
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 12, color: '#666', fontWeight: 500, marginBottom: 8 }}>Elige un emoji</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <div className="mb-6">
+          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Emoji</label>
+          <div className="flex flex-wrap gap-2">
             {EMOJIS.map(e => (
-              <button key={e} onClick={() => setEmoji(e)} style={{ width: 40, height: 40, fontSize: 20, borderRadius: 8, border: emoji === e ? '2px solid #333' : '1px solid #eee', background: emoji === e ? '#f5f5f5' : 'white', cursor: 'pointer' }}>{e}</button>
+              <button
+                key={e}
+                onClick={() => setEmoji(e)}
+                className={`w-9 h-9 text-lg rounded-lg transition-colors ${
+                  emoji === e
+                    ? 'border-2 border-gray-900 bg-gray-100'
+                    : 'border border-gray-200 bg-white hover:bg-gray-50'
+                }`}
+              >
+                {e}
+              </button>
             ))}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onCerrar} style={{ flex: 1, padding: '10px', border: '1px solid #ddd', borderRadius: 8, background: 'white', cursor: 'pointer', fontSize: 14 }}>Cancelar</button>
-          <button onClick={handleGuardar} style={{ flex: 1, padding: '10px', border: 'none', borderRadius: 8, background: '#333', color: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>Guardar</button>
+        <div className="flex gap-3">
+          <button onClick={onCerrar} className="flex-1 py-2.5 px-4 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
+            Cancelar
+          </button>
+          <button onClick={handleGuardar} className="flex-1 py-2.5 px-4 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">
+            Guardar
+          </button>
         </div>
       </div>
     </div>
@@ -123,10 +158,22 @@ function ModalDestino({ hogarId, onCerrar, onGuardado }) {
 function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos }) {
   const [form, setForm] = useState(
     productoEditar
-      ? { ...productoEditar, cantidad: String(productoEditar.cantidad), frecuencia_consumo: String(productoEditar.frecuencia_consumo || ''), unidad_consumo: productoEditar.unidad_consumo || 'unidad/día', modo_consumo: productoEditar.modo_consumo || 'manual' }
-      : { nombre: '', categoria: '', cantidad: '', unidad: 'un.', vencimiento: '', destino: destinos[0]?.nombre || 'Casa General', frecuencia_consumo: '', unidad_consumo: 'unidad/día', modo_consumo: 'manual' }
+      ? {
+          ...productoEditar,
+          cantidad: String(productoEditar.cantidad),
+          frecuencia_consumo: String(productoEditar.frecuencia_consumo || ''),
+          unidad_consumo: productoEditar.unidad_consumo || 'unidad/día',
+          modo_consumo: productoEditar.modo_consumo || 'manual',
+        }
+      : {
+          nombre: '', categoria: '', cantidad: '', unidad: 'un.', vencimiento: '',
+          destino: destinos[0]?.nombre || 'Casa General',
+          frecuencia_consumo: '', unidad_consumo: 'unidad/día', modo_consumo: 'manual',
+        }
   );
+
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
   const handleGuardar = () => {
     if (!form.nombre || !form.categoria || !form.cantidad || !form.vencimiento) {
       alert('Por favor completa todos los campos');
@@ -139,33 +186,43 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos }) {
     });
     onCerrar();
   };
-  const inputStyle = { width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, boxSizing: 'border-box', marginTop: 4 };
-  const labelStyle = { fontSize: 12, color: '#666', fontWeight: 500 };
+
+  const inputCls = 'w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1';
+  const labelCls = 'block text-xs font-medium text-gray-500 uppercase tracking-wide';
+
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-      <div style={{ background: 'white', borderRadius: 14, padding: 24, width: '90%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>{productoEditar ? 'Editar producto' : 'Agregar producto'}</h2>
-          <button onClick={onCerrar} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#999' }}>✕</button>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+      <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-xl">
+        <div className="flex justify-between items-center p-6 pb-4">
+          <h2 className="text-base font-semibold text-gray-900">{productoEditar ? 'Editar producto' : 'Agregar producto'}</h2>
+          <button onClick={onCerrar} className="text-gray-400 hover:text-gray-600 text-xl leading-none transition-colors">✕</button>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="px-6 pb-2 space-y-4">
           <div>
-            <div style={labelStyle}>Nombre del producto</div>
-            <input name="nombre" value={form.nombre} onChange={handleChange} placeholder="Ej: Leche entera" style={inputStyle} />
+            <label className={labelCls}>Nombre del producto</label>
+            <input name="nombre" value={form.nombre} onChange={handleChange} placeholder="Ej: Leche entera" className={inputCls} />
           </div>
           <div>
-            <div style={labelStyle}>Para quién es</div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+            <label className={labelCls}>Para quién es</label>
+            <div className="flex gap-2 mt-2 flex-wrap">
               {destinos.map(d => (
-                <button key={d.id} onClick={() => setForm({ ...form, destino: d.nombre })} style={{ padding: '8px 12px', borderRadius: 8, border: form.destino === d.nombre ? '2px solid #333' : '1px solid #ddd', background: form.destino === d.nombre ? '#333' : 'white', color: form.destino === d.nombre ? 'white' : '#666', fontSize: 12, cursor: 'pointer', fontWeight: form.destino === d.nombre ? 600 : 400 }}>
+                <button
+                  key={d.id}
+                  onClick={() => setForm({ ...form, destino: d.nombre })}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    form.destino === d.nombre
+                      ? 'bg-gray-900 text-white border-2 border-gray-900'
+                      : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
                   {d.emoji} {d.nombre}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <div style={labelStyle}>Categoría</div>
-            <select name="categoria" value={form.categoria} onChange={handleChange} style={inputStyle}>
+            <label className={labelCls}>Categoría</label>
+            <select name="categoria" value={form.categoria} onChange={handleChange} className={inputCls}>
               <option value="">Selecciona una categoría</option>
               <option>Lácteos</option>
               <option>Verduras</option>
@@ -180,14 +237,14 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos }) {
               <option>Otros</option>
             </select>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <div style={labelStyle}>Cantidad</div>
-              <input name="cantidad" type="number" value={form.cantidad} onChange={handleChange} placeholder="Ej: 3" style={inputStyle} />
+              <label className={labelCls}>Cantidad</label>
+              <input name="cantidad" type="number" value={form.cantidad} onChange={handleChange} placeholder="Ej: 3" className={inputCls} />
             </div>
             <div>
-              <div style={labelStyle}>Unidad</div>
-              <select name="unidad" value={form.unidad} onChange={handleChange} style={inputStyle}>
+              <label className={labelCls}>Unidad</label>
+              <select name="unidad" value={form.unidad} onChange={handleChange} className={inputCls}>
                 <option>un.</option>
                 <option>kg.</option>
                 <option>g.</option>
@@ -198,14 +255,27 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos }) {
             </div>
           </div>
           <div>
-            <div style={labelStyle}>Fecha de vencimiento</div>
-            <input name="vencimiento" type="date" value={form.vencimiento} onChange={handleChange} style={inputStyle} />
+            <label className={labelCls}>Fecha de vencimiento</label>
+            <input name="vencimiento" type="date" value={form.vencimiento} onChange={handleChange} className={inputCls} />
           </div>
           <div>
-            <div style={labelStyle}>Consumo diario (opcional)</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 8, marginTop: 4 }}>
-              <input name="frecuencia_consumo" type="number" min="0" value={form.frecuencia_consumo} onChange={handleChange} placeholder="Ej: 2" style={{ ...inputStyle, marginTop: 0 }} />
-              <select name="unidad_consumo" value={form.unidad_consumo} onChange={handleChange} style={{ ...inputStyle, marginTop: 0 }}>
+            <label className={labelCls}>Consumo diario (opcional)</label>
+            <div className="grid grid-cols-[1fr_2fr] gap-2 mt-1">
+              <input
+                name="frecuencia_consumo"
+                type="number"
+                min="0"
+                value={form.frecuencia_consumo}
+                onChange={handleChange}
+                placeholder="Ej: 2"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition"
+              />
+              <select
+                name="unidad_consumo"
+                value={form.unidad_consumo}
+                onChange={handleChange}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition"
+              >
                 <option>unidad/día</option>
                 <option>unidad/semana</option>
                 <option>kg/día</option>
@@ -217,8 +287,8 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos }) {
           </div>
           {Number(form.frecuencia_consumo) > 0 && (
             <div>
-              <div style={labelStyle}>Modo de consumo</div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              <label className={labelCls}>Modo de consumo</label>
+              <div className="flex gap-2 mt-2">
                 {[
                   { value: 'manual', label: '✋ Manual' },
                   { value: 'automatico', label: '▶️ Automático' },
@@ -228,7 +298,11 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos }) {
                     key={op.value}
                     type="button"
                     onClick={() => setForm({ ...form, modo_consumo: op.value })}
-                    style={{ flex: 1, padding: '8px 4px', borderRadius: 8, border: form.modo_consumo === op.value ? '2px solid #333' : '1px solid #ddd', background: form.modo_consumo === op.value ? '#333' : 'white', color: form.modo_consumo === op.value ? 'white' : '#666', fontSize: 12, cursor: 'pointer', fontWeight: form.modo_consumo === op.value ? 600 : 400 }}
+                    className={`flex-1 py-2 px-1 rounded-lg text-xs font-medium transition-colors ${
+                      form.modo_consumo === op.value
+                        ? 'bg-gray-900 text-white border-2 border-gray-900'
+                        : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                    }`}
                   >
                     {op.label}
                   </button>
@@ -237,9 +311,11 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos }) {
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-          <button onClick={onCerrar} style={{ flex: 1, padding: '10px', border: '1px solid #ddd', borderRadius: 8, background: 'white', cursor: 'pointer', fontSize: 14 }}>Cancelar</button>
-          <button onClick={handleGuardar} style={{ flex: 1, padding: '10px', border: 'none', borderRadius: 8, background: '#333', color: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>
+        <div className="flex gap-3 p-6 pt-4">
+          <button onClick={onCerrar} className="flex-1 py-2.5 px-4 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
+            Cancelar
+          </button>
+          <button onClick={handleGuardar} className="flex-1 py-2.5 px-4 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">
             {productoEditar ? 'Guardar cambios' : 'Guardar'}
           </button>
         </div>
@@ -249,55 +325,58 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos }) {
 }
 
 function ModalGestionHogar({ solicitudes, miembros, onAprobar, onRechazar, onEliminarMiembro, onCerrar }) {
-  const overlay = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 };
   return (
-    <div style={overlay}>
-      <div style={{ background: 'white', borderRadius: 14, padding: 24, width: '90%', maxWidth: 440, maxHeight: '85vh', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>🏠 Gestionar hogar</h2>
-          <button onClick={onCerrar} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#999' }}>✕</button>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+      <div className="bg-white rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-xl">
+        <div className="flex justify-between items-center p-6 pb-4">
+          <h2 className="text-base font-semibold text-gray-900">🏠 Gestionar hogar</h2>
+          <button onClick={onCerrar} className="text-gray-400 hover:text-gray-600 text-xl leading-none transition-colors">✕</button>
         </div>
-
-        {solicitudes.length > 0 && (
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#92400E', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
-              Solicitudes pendientes ({solicitudes.length})
-            </div>
-            {solicitudes.map((s, i) => (
-              <div key={s.user_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < solicitudes.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>{s.nombre || 'Usuario'}</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => onAprobar(s.user_id)} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#3B6D11', color: 'white', cursor: 'pointer', fontSize: 13 }}>✅ Aprobar</button>
-                  <button onClick={() => onRechazar(s.user_id)} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#A32D2D', color: 'white', cursor: 'pointer', fontSize: 13 }}>✕ Rechazar</button>
-                </div>
+        <div className="px-6 pb-6">
+          {solicitudes.length > 0 && (
+            <div className="mb-6">
+              <div className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-3">
+                Solicitudes pendientes ({solicitudes.length})
               </div>
-            ))}
-          </div>
-        )}
-
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
-            Miembros activos ({miembros.length})
-          </div>
-          {miembros.length === 0 ? (
-            <p style={{ color: '#aaa', fontSize: 14 }}>Sin miembros registrados</p>
-          ) : (
-            miembros.map((m, i) => (
-              <div key={m.user_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < miembros.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 14 }}>{m.nombre || 'Usuario'}</span>
-                  {m.rol === 'admin' && (
-                    <span style={{ fontSize: 10, background: '#333', color: 'white', borderRadius: 4, padding: '2px 6px', fontWeight: 500 }}>Admin</span>
+              {solicitudes.map((s, i) => (
+                <div key={s.user_id} className={`flex justify-between items-center py-3 ${i < solicitudes.length - 1 ? 'border-b border-gray-50' : ''}`}>
+                  <div className="text-sm font-medium text-gray-900">{s.nombre || 'Usuario'}</div>
+                  <div className="flex gap-2">
+                    <button onClick={() => onAprobar(s.user_id)} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-green-700 text-white hover:bg-green-800 transition-colors">
+                      ✅ Aprobar
+                    </button>
+                    <button onClick={() => onRechazar(s.user_id)} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-700 text-white hover:bg-red-800 transition-colors">
+                      ✕ Rechazar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div>
+            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+              Miembros activos ({miembros.length})
+            </div>
+            {miembros.length === 0 ? (
+              <p className="text-sm text-gray-400">Sin miembros registrados</p>
+            ) : (
+              miembros.map((m, i) => (
+                <div key={m.user_id} className={`flex justify-between items-center py-3 ${i < miembros.length - 1 ? 'border-b border-gray-50' : ''}`}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-900">{m.nombre || 'Usuario'}</span>
+                    {m.rol === 'admin' && (
+                      <span className="text-xs bg-gray-900 text-white rounded px-1.5 py-0.5 font-medium">Admin</span>
+                    )}
+                  </div>
+                  {m.rol !== 'admin' && (
+                    <button onClick={() => onEliminarMiembro(m.user_id)} className="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 text-red-600 hover:bg-red-50 transition-colors">
+                      Eliminar
+                    </button>
                   )}
                 </div>
-                {m.rol !== 'admin' && (
-                  <button onClick={() => onEliminarMiembro(m.user_id)} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #eee', background: 'white', color: '#A32D2D', cursor: 'pointer', fontSize: 13 }}>
-                    Eliminar
-                  </button>
-                )}
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -331,51 +410,58 @@ function ModalGestionCuenta({ esAdmin, hogarId, nombreHogar, onNombreHogarCambia
     setCargando(false);
   };
 
-  const inputStyle = { width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, boxSizing: 'border-box', marginTop: 4 };
-  const labelStyle = { fontSize: 12, color: '#666', fontWeight: 500 };
+  const inputCls = 'w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1';
+  const labelCls = 'block text-xs font-medium text-gray-500 uppercase tracking-wide';
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
-      <div style={{ background: 'white', borderRadius: 14, padding: 24, width: '90%', maxWidth: 400, maxHeight: '85vh', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>⚙️ Gestión de cuenta</h2>
-          <button onClick={onCerrar} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#999' }}>✕</button>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+      <div className="bg-white rounded-2xl w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-xl">
+        <div className="flex justify-between items-center p-6 pb-4">
+          <h2 className="text-base font-semibold text-gray-900">⚙️ Gestión de cuenta</h2>
+          <button onClick={onCerrar} className="text-gray-400 hover:text-gray-600 text-xl leading-none transition-colors">✕</button>
         </div>
-
-        <div style={{ marginBottom: esAdmin ? 24 : 0 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Cambiar contraseña</div>
-          <div style={labelStyle}>Nueva contraseña</div>
-          <input
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="Mínimo 6 caracteres"
-            style={inputStyle}
-          />
-          <button onClick={handleCambiarPassword} disabled={cargando} style={{ marginTop: 10, padding: '9px 16px', border: 'none', borderRadius: 8, background: '#333', color: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
-            {cargando ? 'Guardando...' : 'Actualizar contraseña'}
-          </button>
-        </div>
-
-        {esAdmin && (
-          <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 24 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Nombre del hogar</div>
-            <div style={labelStyle}>Nombre</div>
+        <div className="px-6 pb-6 space-y-6">
+          <div>
+            <div className={`${labelCls} mb-3`}>Cambiar contraseña</div>
+            <label className="block text-xs text-gray-500 mb-0.5">Nueva contraseña</label>
             <input
-              value={nuevoNombre}
-              onChange={e => setNuevoNombre(e.target.value)}
-              placeholder="Nombre del hogar"
-              style={inputStyle}
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Mínimo 6 caracteres"
+              className={inputCls}
             />
-            <button onClick={handleCambiarNombreHogar} disabled={cargando} style={{ marginTop: 10, padding: '9px 16px', border: 'none', borderRadius: 8, background: '#333', color: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
-              {cargando ? 'Guardando...' : 'Cambiar nombre'}
+            <button
+              onClick={handleCambiarPassword}
+              disabled={cargando}
+              className="mt-3 py-2 px-4 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50"
+            >
+              {cargando ? 'Guardando...' : 'Actualizar contraseña'}
             </button>
           </div>
-        )}
-
-        {mensaje && (
-          <p style={{ fontSize: 13, marginTop: 16, color: mensaje.startsWith('✅') ? '#3B6D11' : '#A32D2D' }}>{mensaje}</p>
-        )}
+          {esAdmin && (
+            <div className="border-t border-gray-100 pt-6">
+              <div className={`${labelCls} mb-3`}>Nombre del hogar</div>
+              <label className="block text-xs text-gray-500 mb-0.5">Nombre</label>
+              <input
+                value={nuevoNombre}
+                onChange={e => setNuevoNombre(e.target.value)}
+                placeholder="Nombre del hogar"
+                className={inputCls}
+              />
+              <button
+                onClick={handleCambiarNombreHogar}
+                disabled={cargando}
+                className="mt-3 py-2 px-4 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50"
+              >
+                {cargando ? 'Guardando...' : 'Cambiar nombre'}
+              </button>
+            </div>
+          )}
+          {mensaje && (
+            <p className={`text-sm ${mensaje.startsWith('✅') ? 'text-green-700' : 'text-red-600'}`}>{mensaje}</p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -532,40 +618,62 @@ function App() {
   };
 
   if (!session) return <Auth />;
-  if (cargando) return <div style={{ textAlign: 'center', padding: 60, fontFamily: 'sans-serif', color: '#888' }}>Cargando...</div>;
+
+  if (cargando) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
+      <div className="text-sm text-gray-400">Cargando...</div>
+    </div>
+  );
 
   if (estadoMiembro === 'pendiente') return (
-    <div style={{ maxWidth: 400, margin: '0 auto', padding: '60px 20px', fontFamily: 'sans-serif', textAlign: 'center' }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 12px' }}>Solicitud pendiente</h2>
-      <p style={{ fontSize: 14, color: '#888', lineHeight: 1.6, marginBottom: 32 }}>
-        Tu solicitud para unirte al hogar está siendo revisada por el administrador.<br />Vuelve a intentar más tarde.
-      </p>
-      <button onClick={() => supabase.auth.signOut()} style={{ padding: '10px 24px', border: '1px solid #ddd', borderRadius: 8, background: 'white', cursor: 'pointer', fontSize: 14, color: '#666' }}>
-        Cerrar sesión
-      </button>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 font-sans">
+      <div className="text-center max-w-sm">
+        <div className="text-5xl mb-4">⏳</div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">Solicitud pendiente</h2>
+        <p className="text-sm text-gray-400 leading-relaxed mb-8">
+          Tu solicitud para unirte al hogar está siendo revisada por el administrador. Vuelve a intentar más tarde.
+        </p>
+        <button
+          onClick={() => supabase.auth.signOut()}
+          className="px-6 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+        >
+          Cerrar sesión
+        </button>
+      </div>
     </div>
   );
 
   if (estadoMiembro === 'rechazado') return (
-    <div style={{ maxWidth: 400, margin: '0 auto', padding: '60px 20px', fontFamily: 'sans-serif', textAlign: 'center' }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>❌</div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 12px' }}>Solicitud rechazada</h2>
-      <p style={{ fontSize: 14, color: '#888', lineHeight: 1.6, marginBottom: 32 }}>
-        Tu solicitud para unirte al hogar fue rechazada.<br />Contacta al administrador si crees que es un error.
-      </p>
-      <button onClick={() => supabase.auth.signOut()} style={{ padding: '10px 24px', border: '1px solid #ddd', borderRadius: 8, background: 'white', cursor: 'pointer', fontSize: 14, color: '#666' }}>
-        Cerrar sesión
-      </button>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 font-sans">
+      <div className="text-center max-w-sm">
+        <div className="text-5xl mb-4">❌</div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">Solicitud rechazada</h2>
+        <p className="text-sm text-gray-400 leading-relaxed mb-8">
+          Tu solicitud para unirte al hogar fue rechazada. Contacta al administrador si crees que es un error.
+        </p>
+        <button
+          onClick={() => supabase.auth.signOut()}
+          className="px-6 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+        >
+          Cerrar sesión
+        </button>
+      </div>
     </div>
   );
 
   if (!hogarId) return (
-    <div style={{ textAlign: 'center', padding: 60, fontFamily: 'sans-serif' }}>
-      <div style={{ fontSize: 40 }}>🏠</div>
-      <h2 style={{ fontSize: 18, margin: '16px 0 8px' }}>No estás en ningún hogar</h2>
-      <p style={{ color: '#888', fontSize: 14, marginBottom: 24 }}>Crea uno nuevo o solicita unirte desde el registro</p>
-      <button onClick={() => supabase.auth.signOut()} style={{ padding: '10px 20px', border: '1px solid #ddd', borderRadius: 8, background: 'white', cursor: 'pointer' }}>Cerrar sesión</button>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 font-sans">
+      <div className="text-center max-w-sm">
+        <div className="text-5xl mb-4">🏠</div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">No estás en ningún hogar</h2>
+        <p className="text-sm text-gray-400 mb-8">Crea uno nuevo o solicita unirte desde el registro</p>
+        <button
+          onClick={() => supabase.auth.signOut()}
+          className="px-6 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+        >
+          Cerrar sesión
+        </button>
+      </div>
     </div>
   );
 
@@ -583,56 +691,49 @@ function App() {
     { id: 'closet', label: '🗄️ Despensa' },
   ];
 
-  const menuItemStyle = {
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    width: '100%', padding: '10px 12px', border: 'none', background: 'none',
-    cursor: 'pointer', fontSize: 14, textAlign: 'left', borderRadius: 8, color: '#333',
-  };
-
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto', fontFamily: 'sans-serif', background: '#f5f5f5', minHeight: '100vh' }}>
-      <div style={{ background: 'white', padding: '16px 20px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="max-w-xl mx-auto bg-gray-50 min-h-screen font-sans">
+      {/* Header */}
+      <div className="bg-white px-5 py-4 border-b border-gray-100 flex justify-between items-center sticky top-0 z-10 shadow-sm">
         <div>
-          <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{nombreHogar || '🏠'}</h1>
-          <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>Inventario del hogar</div>
+          <h1 className="text-base font-semibold text-gray-900 tracking-tight">{nombreHogar || '🏠'}</h1>
+          <div className="text-xs text-gray-400 mt-0.5">Inventario del hogar</div>
         </div>
-
-        <div ref={menuRef} style={{ position: 'relative' }}>
+        <div ref={menuRef} className="relative">
           <button
             onClick={() => setMenuAbierto(!menuAbierto)}
-            style={{ position: 'relative', fontSize: 18, background: 'none', border: '1px solid #eee', borderRadius: 8, width: 36, height: 36, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            className="relative w-9 h-9 text-lg border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50 transition-colors"
           >
             👤
             {esAdmin && solicitudes.length > 0 && (
-              <span style={{ position: 'absolute', top: -4, right: -4, background: '#A32D2D', color: 'white', borderRadius: '50%', width: 16, height: 16, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
+              <span className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center font-bold leading-none">
                 {solicitudes.length}
               </span>
             )}
           </button>
-
           {menuAbierto && (
-            <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: 'white', border: '1px solid #eee', borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.1)', zIndex: 150, minWidth: 220, padding: 6 }}>
+            <div className="absolute right-0 top-[calc(100%+8px)] bg-white border border-gray-200 rounded-xl shadow-lg z-50 min-w-[220px] p-1.5">
               {esAdmin && (
                 <button
                   onClick={() => { setModalActivo('hogar'); setMenuAbierto(false); }}
-                  style={menuItemStyle}
+                  className="flex items-center justify-between w-full px-3 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-left"
                 >
                   <span>🏠 Gestionar hogar</span>
                   {solicitudes.length > 0 && (
-                    <span style={{ background: '#A32D2D', color: 'white', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 600 }}>{solicitudes.length}</span>
+                    <span className="bg-red-600 text-white rounded-full px-2 py-0.5 text-xs font-semibold">{solicitudes.length}</span>
                   )}
                 </button>
               )}
               <button
                 onClick={() => { setModalActivo('cuenta'); setMenuAbierto(false); }}
-                style={menuItemStyle}
+                className="flex items-center w-full px-3 py-2.5 text-sm text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-left"
               >
                 ⚙️ Gestión de cuenta
               </button>
-              <div style={{ borderTop: '1px solid #f0f0f0', margin: '4px 6px' }} />
+              <div className="border-t border-gray-100 my-1 mx-1" />
               <button
                 onClick={() => supabase.auth.signOut()}
-                style={{ ...menuItemStyle, color: '#A32D2D' }}
+                className="flex items-center w-full px-3 py-2.5 text-sm text-red-600 rounded-lg hover:bg-red-50 transition-colors text-left"
               >
                 → Cerrar sesión
               </button>
@@ -641,70 +742,136 @@ function App() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', background: 'white', borderBottom: '1px solid #eee' }}>
+      {/* Tabs */}
+      <div className="flex bg-white border-b border-gray-100">
         {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, padding: '10px 4px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: tab === t.id ? 600 : 400, borderBottom: tab === t.id ? '2px solid #333' : '2px solid transparent', fontSize: 13 }}>
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 ${
+              tab === t.id
+                ? 'border-gray-900 text-gray-900'
+                : 'border-transparent text-gray-400 hover:text-gray-600'
+            }`}
+          >
             {t.label}
           </button>
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, padding: '10px 16px', background: 'white', borderBottom: '1px solid #eee', overflowX: 'auto', alignItems: 'center' }}>
-        <button onClick={() => setFiltroDestino('Todos')} style={{ padding: '5px 14px', borderRadius: 20, border: filtroDestino === 'Todos' ? '2px solid #333' : '1px solid #ddd', background: filtroDestino === 'Todos' ? '#333' : 'white', color: filtroDestino === 'Todos' ? 'white' : '#666', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: filtroDestino === 'Todos' ? 600 : 400 }}>
+      {/* Filtros de destino */}
+      <div className="flex gap-2 px-4 py-3 bg-white border-b border-gray-100 overflow-x-auto items-center">
+        <button
+          onClick={() => setFiltroDestino('Todos')}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+            filtroDestino === 'Todos'
+              ? 'bg-gray-900 text-white'
+              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+          }`}
+        >
           ✨ Todos
         </button>
         {destinos.map(d => (
-          <button key={d.id} onClick={() => setFiltroDestino(d.nombre)} style={{ padding: '5px 14px', borderRadius: 20, border: filtroDestino === d.nombre ? '2px solid #333' : '1px solid #ddd', background: filtroDestino === d.nombre ? '#333' : 'white', color: filtroDestino === d.nombre ? 'white' : '#666', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: filtroDestino === d.nombre ? 600 : 400 }}>
+          <button
+            key={d.id}
+            onClick={() => setFiltroDestino(d.nombre)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+              filtroDestino === d.nombre
+                ? 'bg-gray-900 text-white'
+                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            }`}
+          >
             {d.emoji} {d.nombre}
           </button>
         ))}
-        <button onClick={() => setMostrarModalDestino(true)} style={{ padding: '5px 12px', borderRadius: 20, border: '1px dashed #ccc', background: 'white', color: '#aaa', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+        <button
+          onClick={() => setMostrarModalDestino(true)}
+          className="px-3 py-1.5 rounded-full text-xs font-medium text-gray-400 border border-dashed border-gray-300 hover:border-gray-400 whitespace-nowrap transition-colors"
+        >
           + Agregar
         </button>
       </div>
 
-      <div style={{ padding: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 16 }}>
+      {/* Contenido */}
+      <div className="p-4">
+        {/* Contadores de estado */}
+        <div className="grid grid-cols-4 gap-2 mb-4">
           {[
-            { num: vencidos.length, label: 'Vencidos', color: '#A32D2D', lista: vencidos, titulo: '🔴 Productos vencidos' },
-            { num: porVencer.length, label: 'Por vencer', color: '#854F0B', lista: porVencer, titulo: '🟡 Por vencer pronto' },
-            { num: porAgotar.length, label: 'Por agotar', color: '#C2410C', lista: porAgotar, titulo: '🟠 Por agotar pronto' },
-            { num: ok.length, label: 'En buen estado', color: '#3B6D11', lista: ok, titulo: '🟢 En buen estado' },
+            { num: vencidos.length, label: 'Vencidos', cls: 'text-red-600', lista: vencidos, titulo: '🔴 Productos vencidos' },
+            { num: porVencer.length, label: 'Por vencer', cls: 'text-amber-600', lista: porVencer, titulo: '🟡 Por vencer pronto' },
+            { num: porAgotar.length, label: 'Por agotar', cls: 'text-orange-600', lista: porAgotar, titulo: '🟠 Por agotar pronto' },
+            { num: ok.length, label: 'En buen estado', cls: 'text-green-700', lista: ok, titulo: '🟢 En buen estado' },
           ].map(m => (
-            <div key={m.label} onClick={() => setModalAlerta({ titulo: m.titulo, lista: m.lista })}
-              style={{ background: 'white', borderRadius: 10, padding: '10px 6px', textAlign: 'center', border: '1px solid #eee', cursor: 'pointer' }}>
-              <div style={{ fontSize: 20, fontWeight: 600, color: m.color }}>{m.num}</div>
-              <div style={{ fontSize: 10, color: '#888', marginTop: 2, lineHeight: 1.3 }}>{m.label}</div>
+            <div
+              key={m.label}
+              onClick={() => setModalAlerta({ titulo: m.titulo, lista: m.lista })}
+              className="bg-white rounded-xl border border-gray-100 p-3 text-center cursor-pointer hover:border-gray-200 hover:shadow-sm transition-all"
+            >
+              <div className={`text-xl font-semibold ${m.cls}`}>{m.num}</div>
+              <div className="text-xs text-gray-400 mt-1 leading-tight">{m.label}</div>
             </div>
           ))}
         </div>
 
+        {/* Lista de productos */}
         {cargando ? (
-          <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Cargando productos...</div>
+          <div className="text-center py-10 text-sm text-gray-400">Cargando productos...</div>
         ) : (
           <>
             {categorias.map(cat => (
-              <div key={cat} style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{cat}</div>
+              <div key={cat} className="mb-4">
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{cat}</div>
                 {lista.filter(p => p.categoria === cat).map(p => (
-                  <ProductoItem key={p.id} producto={p} onEliminar={handleEliminar} onEditar={handleEditar} onToggleModo={handleToggleModo} mostrarUbicacion={tab === 'todos'} />
+                  <ProductoItem
+                    key={p.id}
+                    producto={p}
+                    onEliminar={handleEliminar}
+                    onEditar={handleEditar}
+                    onToggleModo={handleToggleModo}
+                    mostrarUbicacion={tab === 'todos'}
+                  />
                 ))}
               </div>
             ))}
             {lista.length === 0 && (
-              <div style={{ textAlign: 'center', padding: 40, color: '#aaa', fontSize: 14 }}>No hay productos aquí todavía</div>
+              <div className="text-center py-10 text-sm text-gray-400">No hay productos aquí todavía</div>
             )}
           </>
         )}
 
-        <button onClick={() => { setProductoEditar(null); setMostrarFormulario(true); }} style={{ width: '100%', padding: '12px', border: '1.5px dashed #ccc', borderRadius: 10, background: 'transparent', color: '#888', fontSize: 14, cursor: 'pointer', marginTop: 8 }}>
+        <button
+          onClick={() => { setProductoEditar(null); setMostrarFormulario(true); }}
+          className="w-full py-3 mt-2 border border-dashed border-gray-300 rounded-xl text-sm text-gray-400 hover:border-gray-400 hover:text-gray-500 transition-colors"
+        >
           + Agregar producto
         </button>
       </div>
 
-      {modalAlerta && <ModalAlerta titulo={modalAlerta.titulo} productos={modalAlerta.lista} onCerrar={() => setModalAlerta(null)} onEliminar={handleEliminar} onEditar={handleEditar} />}
-      {mostrarFormulario && <FormularioProducto onGuardar={handleGuardar} onCerrar={handleCerrar} productoEditar={productoEditar} destinos={destinos} />}
-      {mostrarModalDestino && <ModalDestino hogarId={hogarId} onCerrar={() => setMostrarModalDestino(false)} onGuardado={() => cargarDestinos()} />}
+      {/* Modales */}
+      {modalAlerta && (
+        <ModalAlerta
+          titulo={modalAlerta.titulo}
+          productos={modalAlerta.lista}
+          onCerrar={() => setModalAlerta(null)}
+          onEliminar={handleEliminar}
+          onEditar={handleEditar}
+        />
+      )}
+      {mostrarFormulario && (
+        <FormularioProducto
+          onGuardar={handleGuardar}
+          onCerrar={handleCerrar}
+          productoEditar={productoEditar}
+          destinos={destinos}
+        />
+      )}
+      {mostrarModalDestino && (
+        <ModalDestino
+          hogarId={hogarId}
+          onCerrar={() => setMostrarModalDestino(false)}
+          onGuardado={() => cargarDestinos()}
+        />
+      )}
       {modalActivo === 'hogar' && (
         <ModalGestionHogar
           solicitudes={solicitudes}

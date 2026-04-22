@@ -11,10 +11,11 @@ export default function Auth() {
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState('');
 
-  const inputStyle = { width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, boxSizing: 'border-box', marginTop: 4 };
-  const labelStyle = { fontSize: 12, color: '#666', fontWeight: 500 };
-  const btnPrimary = { width: '100%', padding: '12px', border: 'none', borderRadius: 8, background: '#333', color: 'white', cursor: 'pointer', fontSize: 14, fontWeight: 500, marginTop: 8 };
-  const btnSecondary = { width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: 8, background: 'white', cursor: 'pointer', fontSize: 14, marginTop: 8 };
+  const inputCls = 'w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1';
+  const labelCls = 'block text-xs font-medium text-gray-500 uppercase tracking-wide';
+  const btnPrimary = 'w-full py-2.5 px-4 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2';
+  const btnSecondary = 'w-full py-2.5 px-4 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors mt-2';
+  const btnGhost = 'w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors mt-1';
 
   const handleLogin = async () => {
     setCargando(true);
@@ -56,7 +57,6 @@ export default function Auth() {
       await supabase.from('destinos').insert([{ hogar_id: hogar.id, nombre: 'Casa General', emoji: '🏠' }]);
       setMensaje('✅ Hogar creado. Ya puedes iniciar sesión.');
     } else {
-      // Buscar el hogar ANTES de crear la cuenta, para no dejar usuarios huérfanos en auth
       console.log('[unirse] Buscando hogar:', nombreHogar.trim());
       const { data: hogares, error: errorBusqueda } = await supabase
         .from('hogares')
@@ -116,79 +116,91 @@ export default function Auth() {
   const resetRegistro = () => { setModo('login'); setFlujo('inicio'); setMensaje(''); };
 
   return (
-    <div style={{ maxWidth: 400, margin: '0 auto', padding: '40px 20px', fontFamily: 'sans-serif' }}>
-      <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <div style={{ fontSize: 40 }}>🏠</div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, margin: '8px 0 4px' }}>MiDespensa</h1>
-        <p style={{ fontSize: 14, color: '#888', margin: 0 }}>Inventario del hogar</p>
-      </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 font-sans">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="text-4xl mb-3">🏠</div>
+          <h1 className="text-xl font-semibold text-gray-900 tracking-tight">MiDespensa</h1>
+          <p className="text-sm text-gray-400 mt-1">Inventario del hogar</p>
+        </div>
 
-      <div style={{ background: 'white', borderRadius: 14, padding: 24, border: '1px solid #eee' }}>
-        {modo === 'login' ? (
-          <>
-            <h2 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 20px' }}>Iniciar sesión</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div>
-                <div style={labelStyle}>Email</div>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com" style={inputStyle} />
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+          {modo === 'login' ? (
+            <>
+              <h2 className="text-sm font-semibold text-gray-900 mb-5">Iniciar sesión</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className={labelCls}>Email</label>
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com" className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Contraseña</label>
+                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className={inputCls} />
+                </div>
               </div>
-              <div>
-                <div style={labelStyle}>Contraseña</div>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={inputStyle} />
+              {mensaje && <p className="text-xs text-red-600 mt-3">{mensaje}</p>}
+              <button onClick={handleLogin} disabled={cargando} className={btnPrimary}>
+                {cargando ? 'Ingresando...' : 'Ingresar'}
+              </button>
+              <button onClick={() => { setModo('registro'); setMensaje(''); }} className={btnSecondary}>
+                Crear cuenta nueva
+              </button>
+            </>
+          ) : flujo === 'inicio' ? (
+            <>
+              <h2 className="text-sm font-semibold text-gray-900 mb-1">Crear cuenta</h2>
+              <p className="text-xs text-gray-400 mb-5">¿Cómo quieres unirte?</p>
+              <button onClick={() => setFlujo('crear')} className={`${btnPrimary} mt-0`}>
+                🏠 Crear un hogar nuevo
+              </button>
+              <button onClick={() => setFlujo('unirse')} className={btnSecondary}>
+                🔍 Solicitar unirme a un hogar
+              </button>
+              <button onClick={resetRegistro} className={btnGhost}>← Volver al login</button>
+            </>
+          ) : (
+            <>
+              <h2 className="text-sm font-semibold text-gray-900 mb-5">
+                {flujo === 'crear' ? '🏠 Crear hogar' : '🔍 Solicitar unirme'}
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className={labelCls}>Tu nombre</label>
+                  <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Alejandro" className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Email</label>
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com" className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Contraseña</label>
+                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>
+                    {flujo === 'crear' ? 'Nombre del hogar' : 'Nombre del hogar al que quieres unirte'}
+                  </label>
+                  <input
+                    value={nombreHogar}
+                    onChange={e => setNombreHogar(e.target.value)}
+                    placeholder="Ej: Familia García"
+                    className={inputCls}
+                  />
+                  {flujo === 'unirse' && (
+                    <p className="text-xs text-gray-400 mt-1.5">Escribe el nombre exacto. El admin deberá aprobar tu solicitud.</p>
+                  )}
+                </div>
               </div>
-            </div>
-            {mensaje && <p style={{ fontSize: 13, color: '#A32D2D', marginTop: 8 }}>{mensaje}</p>}
-            <button onClick={handleLogin} disabled={cargando} style={btnPrimary}>{cargando ? 'Ingresando...' : 'Ingresar'}</button>
-            <button onClick={() => { setModo('registro'); setMensaje(''); }} style={btnSecondary}>Crear cuenta nueva</button>
-          </>
-        ) : flujo === 'inicio' ? (
-          <>
-            <h2 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 8px' }}>Crear cuenta</h2>
-            <p style={{ fontSize: 13, color: '#888', margin: '0 0 20px' }}>¿Cómo quieres unirte?</p>
-            <button onClick={() => setFlujo('crear')} style={{ ...btnPrimary, marginTop: 0 }}>🏠 Crear un hogar nuevo</button>
-            <button onClick={() => setFlujo('unirse')} style={btnSecondary}>🔍 Solicitar unirme a un hogar</button>
-            <button onClick={resetRegistro} style={{ ...btnSecondary, color: '#888', border: 'none' }}>← Volver al login</button>
-          </>
-        ) : (
-          <>
-            <h2 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 20px' }}>
-              {flujo === 'crear' ? '🏠 Crear hogar' : '🔍 Solicitar unirme a un hogar'}
-            </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div>
-                <div style={labelStyle}>Tu nombre</div>
-                <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Alejandro" style={inputStyle} />
-              </div>
-              <div>
-                <div style={labelStyle}>Email</div>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com" style={inputStyle} />
-              </div>
-              <div>
-                <div style={labelStyle}>Contraseña</div>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={inputStyle} />
-              </div>
-              <div>
-                <div style={labelStyle}>{flujo === 'crear' ? 'Nombre del hogar' : 'Nombre del hogar al que quieres unirte'}</div>
-                <input
-                  value={nombreHogar}
-                  onChange={e => setNombreHogar(e.target.value)}
-                  placeholder={flujo === 'crear' ? 'Ej: Familia Coco y Milo' : 'Ej: Familia Coco y Milo'}
-                  style={inputStyle}
-                />
-                {flujo === 'unirse' && (
-                  <div style={{ fontSize: 11, color: '#aaa', marginTop: 4 }}>Escribe el nombre exacto. El admin deberá aprobar tu solicitud.</div>
-                )}
-              </div>
-            </div>
-            {mensaje && (
-              <p style={{ fontSize: 13, color: mensaje.startsWith('✅') ? '#3B6D11' : '#A32D2D', marginTop: 8 }}>{mensaje}</p>
-            )}
-            <button onClick={handleRegistro} disabled={cargando} style={btnPrimary}>
-              {cargando ? 'Enviando...' : flujo === 'crear' ? 'Crear hogar' : 'Enviar solicitud'}
-            </button>
-            <button onClick={() => { setFlujo('inicio'); setMensaje(''); }} style={{ ...btnSecondary, color: '#888', border: 'none' }}>← Volver</button>
-          </>
-        )}
+              {mensaje && (
+                <p className={`text-xs mt-3 ${mensaje.startsWith('✅') ? 'text-green-600' : 'text-red-600'}`}>{mensaje}</p>
+              )}
+              <button onClick={handleRegistro} disabled={cargando} className={btnPrimary}>
+                {cargando ? 'Enviando...' : flujo === 'crear' ? 'Crear hogar' : 'Enviar solicitud'}
+              </button>
+              <button onClick={() => { setFlujo('inicio'); setMensaje(''); }} className={btnGhost}>← Volver</button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
