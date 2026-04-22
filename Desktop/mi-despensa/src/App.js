@@ -358,13 +358,14 @@ function App() {
   }, [menuAbierto]);
 
   const cargarHogar = async () => {
-    const { data } = await supabase
+    // maybeSingle devuelve data:null sin error cuando no hay fila (single() lanzaría error PGRST116)
+    const { data, error } = await supabase
       .from('miembros_hogar')
       .select('hogar_id, rol, estado')
       .eq('user_id', session.user.id)
-      .single();
+      .maybeSingle();
 
-    if (!data) { setCargando(false); return; }
+    if (error || !data) { setCargando(false); return; }
 
     const estado = data.estado || 'activo';
     setEstadoMiembro(estado);
@@ -402,7 +403,8 @@ function App() {
       .from('miembros_hogar')
       .select('*')
       .eq('hogar_id', hid || hogarId)
-      .eq('estado', 'pendiente');
+      .eq('estado', 'pendiente')
+      .neq('user_id', session.user.id);
     setSolicitudes(data || []);
   };
 
