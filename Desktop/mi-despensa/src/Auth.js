@@ -57,28 +57,25 @@ export default function Auth() {
       await supabase.from('destinos').insert([{ hogar_id: hogar.id, nombre: 'Casa General', emoji: '🏠' }]);
       setMensaje('✅ Hogar creado. Ya puedes iniciar sesión.');
     } else {
-      console.log('[unirse] Buscando hogar:', nombreHogar.trim());
-      const { data: hogares, error: errorBusqueda } = await supabase
+      const codigoNorm = nombreHogar.trim().toUpperCase();
+      const { data: hogar, error: errorBusqueda } = await supabase
         .from('hogares')
         .select('*')
-        .ilike('nombre', nombreHogar.trim());
-
-      console.log('[unirse] Resultado búsqueda:', { hogares, errorBusqueda });
+        .eq('codigo_invitacion', codigoNorm)
+        .maybeSingle();
 
       if (errorBusqueda) {
         setMensaje('Error al buscar el hogar. Intenta de nuevo.');
         setCargando(false);
         return;
       }
-      if (!hogares || hogares.length === 0) {
-        setMensaje('No se encontró un hogar con ese nombre. Verifica con el administrador.');
+      if (!hogar) {
+        setMensaje('Código inválido. Verifica con el administrador.');
         setCargando(false);
         return;
       }
 
       const { data, error } = await supabase.auth.signUp({ email, password });
-      console.log('[unirse] signUp — data.user:', data?.user);
-      console.log('[unirse] signUp — error:', error);
       if (error) { setMensaje(error.message); setCargando(false); return; }
       if (!data.user) {
         setMensaje('Este email ya está registrado. Intentá iniciar sesión.');
@@ -87,7 +84,7 @@ export default function Auth() {
       }
 
       const payload = {
-        hogar_id: hogares[0].id,
+        hogar_id: hogar.id,
         user_id: data.user.id,
         rol: 'miembro',
         nombre,
@@ -178,16 +175,16 @@ export default function Auth() {
                 </div>
                 <div>
                   <label className={labelCls}>
-                    {flujo === 'crear' ? 'Nombre del hogar' : 'Nombre del hogar al que quieres unirte'}
+                    {flujo === 'crear' ? 'Nombre del hogar' : 'Código de invitación'}
                   </label>
                   <input
                     value={nombreHogar}
                     onChange={e => setNombreHogar(e.target.value)}
-                    placeholder="Ej: Familia García"
+                    placeholder={flujo === 'crear' ? 'Ej: Familia García' : 'Ej: AB12CD34'}
                     className={inputCls}
                   />
                   {flujo === 'unirse' && (
-                    <p className="text-xs text-gray-400 mt-1.5">Escribe el nombre exacto. El admin deberá aprobar tu solicitud.</p>
+                    <p className="text-xs text-gray-400 mt-1.5">El administrador puede ver el código en Gestión de cuenta.</p>
                   )}
                 </div>
               </div>

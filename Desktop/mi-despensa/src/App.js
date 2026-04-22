@@ -420,11 +420,23 @@ function ModalGestionHogar({ solicitudes, miembros, onAprobar, onRechazar, onEli
   );
 }
 
-function ModalGestionCuenta({ esAdmin, hogarId, nombreHogar, onNombreHogarCambiado, onCerrar }) {
+function ModalGestionCuenta({ esAdmin, hogarId, nombreHogar, codigoInvitacion: codigoInicial, onNombreHogarCambiado, onCodigoCambiado, onCerrar }) {
   const [password, setPassword] = useState('');
   const [nuevoNombre, setNuevoNombre] = useState(nombreHogar);
+  const [codigo, setCodigo] = useState(codigoInicial);
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
+
+  const handleRegenerarCodigo = async () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const nuevo = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    setCargando(true);
+    await supabase.from('hogares').update({ codigo_invitacion: nuevo }).eq('id', hogarId);
+    setCodigo(nuevo);
+    onCodigoCambiado(nuevo);
+    setMensaje('✅ Código regenerado');
+    setCargando(false);
+  };
 
   const handleCambiarPassword = async () => {
     if (!password || password.length < 6) {
@@ -477,6 +489,7 @@ function ModalGestionCuenta({ esAdmin, hogarId, nombreHogar, onNombreHogarCambia
             </button>
           </div>
           {esAdmin && (
+            <>
             <div className="border-t border-gray-100 pt-6">
               <div className={`${labelCls} mb-3`}>Nombre del hogar</div>
               <label className="block text-xs text-gray-500 mb-0.5">Nombre</label>
@@ -494,6 +507,23 @@ function ModalGestionCuenta({ esAdmin, hogarId, nombreHogar, onNombreHogarCambia
                 {cargando ? 'Guardando...' : 'Cambiar nombre'}
               </button>
             </div>
+            <div className="border-t border-gray-100 pt-6">
+              <div className={`${labelCls} mb-3`}>Código de invitación</div>
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-sm font-bold tracking-widest bg-gray-100 text-gray-800 px-3 py-2 rounded-lg flex-1 text-center">
+                  {codigo || '—'}
+                </span>
+                <button
+                  onClick={handleRegenerarCodigo}
+                  disabled={cargando}
+                  className="py-2 px-3 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 whitespace-nowrap"
+                >
+                  🔄 Regenerar
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-2">Comparte este código con quien quieras invitar al hogar.</p>
+            </div>
+            </>
           )}
           {mensaje && (
             <p className={`text-sm ${mensaje.startsWith('✅') ? 'text-green-700' : 'text-red-600'}`}>{mensaje}</p>
@@ -594,6 +624,7 @@ function App() {
   const [session, setSession] = useState(null);
   const [hogarId, setHogarId] = useState(null);
   const [nombreHogar, setNombreHogar] = useState('');
+  const [codigoInvitacion, setCodigoInvitacion] = useState('');
   const [tab, setTab] = useState('todos');
   const [filtroDestino, setFiltroDestino] = useState('Todos');
   const [productos, setProductos] = useState([]);
@@ -656,8 +687,8 @@ function App() {
 
     if (estado === 'activo') {
       setHogarId(data.hogar_id);
-      const { data: hogar } = await supabase.from('hogares').select('nombre').eq('id', data.hogar_id).single();
-      if (hogar) setNombreHogar(hogar.nombre);
+      const { data: hogar } = await supabase.from('hogares').select('nombre, codigo_invitacion').eq('id', data.hogar_id).single();
+      if (hogar) { setNombreHogar(hogar.nombre); setCodigoInvitacion(hogar.codigo_invitacion || ''); }
       cargarProductos(data.hogar_id);
       cargarDestinos(data.hogar_id);
       if (data.rol === 'admin') {
@@ -1134,7 +1165,9 @@ function App() {
           esAdmin={esAdmin}
           hogarId={hogarId}
           nombreHogar={nombreHogar}
+          codigoInvitacion={codigoInvitacion}
           onNombreHogarCambiado={setNombreHogar}
+          onCodigoCambiado={setCodigoInvitacion}
           onCerrar={() => setModalActivo(null)}
         />
       )}

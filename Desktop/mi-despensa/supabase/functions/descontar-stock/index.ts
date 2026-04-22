@@ -1,10 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 Deno.serve(async (req) => {
-  // Permitir invocación manual vía POST con Authorization header
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) {
-    return new Response('Unauthorized', { status: 401 });
+  const cronSecret = req.headers.get('x-internal-secret');
+  if (!cronSecret || cronSecret !== Deno.env.get('CRON_SECRET')) {
+    return new Response('Forbidden', { status: 403 });
   }
 
   const supabase = createClient(
@@ -39,7 +38,7 @@ Deno.serve(async (req) => {
     const esSemanal = p.unidad_consumo?.includes('semana');
     const consumoDiario = esSemanal ? p.frecuencia_consumo / 7 : p.frecuencia_consumo;
     const cantidadAntes = p.cantidad;
-    const nuevaCantidad = Math.floor(p.cantidad - consumoDiario);
+    const nuevaCantidad = parseFloat((p.cantidad - consumoDiario).toFixed(2));
 
     if (nuevaCantidad <= 0) {
       return { id: p.id, nombre: p.nombre, hogar_id: p.hogar_id, cantidadAntes, campos: { cantidad: 0, modo_consumo: 'pausado' } };
