@@ -84,7 +84,7 @@ export default function Auth() {
     <div style={{ maxWidth: 400, margin: '0 auto', padding: '40px 20px', fontFamily: 'sans-serif' }}>
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
         <div style={{ fontSize: 40 }}>🏠</div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, margin: '8px 0 4px' }}>Coco&Milo House</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, margin: '8px 0 4px' }}>MiDespensa</h1>
         <p style={{ fontSize: 14, color: '#888', margin: 0 }}>Inventario del hogar</p>
       </div>
 
