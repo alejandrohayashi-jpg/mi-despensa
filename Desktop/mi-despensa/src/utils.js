@@ -1,3 +1,13 @@
+export const TIPOS_DOCUMENTO = {
+  chip: 'Número de chip',
+  carnet_identidad: 'Carnet de identidad',
+  pasaporte: 'Pasaporte',
+  licencia_conducir: 'Licencia de conducir',
+  seguro_medico: 'Seguro médico',
+  carnet_vacunas: 'Carnet de vacunas',
+  otro: 'Otro',
+};
+
 // Formatea cualquier fecha (date string 'YYYY-MM-DD' o ISO timestamp completo)
 // en formato local es-CL. Devuelve 'Sin fecha' ante null o valor inválido.
 export function formatearFecha(fecha) {

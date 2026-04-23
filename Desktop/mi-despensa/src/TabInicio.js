@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
-import { formatearFechaHora, diasParaVencer } from './utils';
+import { formatearFechaHora, diasParaVencer, TIPOS_DOCUMENTO } from './utils';
 
 export default function TabInicio({ hogarId, productos }) {
   const [citas, setCitas] = useState([]);
@@ -94,7 +94,7 @@ export default function TabInicio({ hogarId, productos }) {
                 <div>
                   <div className="text-sm font-medium text-gray-900">{d.nombre}</div>
                   <div className="text-xs text-gray-400 mt-0.5">
-                    {d.personas?.emoji} {d.personas?.nombre}{d.tipo ? ` · ${d.tipo}` : ''}
+                    {d.personas?.emoji} {d.personas?.nombre}{d.tipo ? ` · ${TIPOS_DOCUMENTO[d.tipo] || d.tipo}` : ''}
                   </div>
                 </div>
                 <span className={`text-xs font-medium ${diasParaVencer(d.fecha_vencimiento).cls}`}>

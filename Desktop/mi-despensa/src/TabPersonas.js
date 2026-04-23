@@ -1,19 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
-import { formatearFecha as fmt, formatearFechaHora } from './utils';
+import { formatearFecha as fmt, formatearFechaHora, TIPOS_DOCUMENTO } from './utils';
 
 const EMOJIS_PERSONAS = ['👶','👦','👧','👨','👩','👴','👵','🐶','🐱','🐾','🦜','🐠','🐰','🐹'];
 
 const CAMPOS_FECHA = ['fecha', 'fecha_aplicacion', 'proxima_dosis', 'fecha_fin', 'fecha_inicio', 'fecha_vencimiento', 'fecha_emision'];
 
-const TIPOS_DOCUMENTO = {
-  carnet_identidad: 'Carnet de identidad',
-  pasaporte: 'Pasaporte',
-  licencia_conducir: 'Licencia de conducir',
-  seguro_medico: 'Seguro médico',
-  carnet_vacunas: 'Carnet de vacunas',
-  otro: 'Otro',
-};
 
 export default function TabPersonas({ hogarId, userId }) {
   const [personas, setPersonas] = useState([]);
@@ -167,25 +159,37 @@ export default function TabPersonas({ hogarId, userId }) {
           </div>
         </div>
       );
-      case 'documentos': return (
-        <div className="space-y-3">
-          <div>
-            <label className={labelCls}>Tipo</label>
-            <select value={formData.tipo || ''} onChange={e => setFormData({...formData, tipo: e.target.value})} className={inputCls}>
-              <option value="">Selecciona...</option>
-              {Object.entries(TIPOS_DOCUMENTO).map(([val, label]) => (
-                <option key={val} value={val}>{label}</option>
-              ))}
-            </select>
+      case 'documentos': {
+        const esMascota = personaActiva?.tipo === 'mascota';
+        const esChip = formData.tipo === 'chip';
+        const tiposDisponibles = esMascota
+          ? Object.entries(TIPOS_DOCUMENTO)
+          : Object.entries(TIPOS_DOCUMENTO).filter(([val]) => val !== 'chip');
+        return (
+          <div className="space-y-3">
+            <div>
+              <label className={labelCls}>Tipo</label>
+              <select value={formData.tipo || ''} onChange={e => setFormData({...formData, tipo: e.target.value})} className={inputCls}>
+                <option value="">Selecciona...</option>
+                {tiposDisponibles.map(([val, label]) => (
+                  <option key={val} value={val}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Número / identificador</label>
+              <input value={formData.numero || ''} onChange={e => setFormData({...formData, numero: e.target.value})} placeholder={esChip ? 'Ej: 985112345678901' : 'Ej: 12.345.678-9'} className={inputCls} />
+            </div>
+            {!esChip && (
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className={labelCls}>Fecha emisión</label><input type="date" value={formData.fecha_emision || ''} onChange={e => setFormData({...formData, fecha_emision: e.target.value})} className={inputCls} /></div>
+                <div><label className={labelCls}>Fecha vencimiento</label><input type="date" value={formData.fecha_vencimiento || ''} onChange={e => setFormData({...formData, fecha_vencimiento: e.target.value})} className={inputCls} /></div>
+              </div>
+            )}
+            <div><label className={labelCls}>Notas</label><input value={formData.notas || ''} onChange={e => setFormData({...formData, notas: e.target.value})} placeholder="Opcional" className={inputCls} /></div>
           </div>
-          <div><label className={labelCls}>Número / identificador</label><input value={formData.numero || ''} onChange={e => setFormData({...formData, numero: e.target.value})} placeholder="Ej: 12.345.678-9" className={inputCls} /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className={labelCls}>Fecha emisión</label><input type="date" value={formData.fecha_emision || ''} onChange={e => setFormData({...formData, fecha_emision: e.target.value})} className={inputCls} /></div>
-            <div><label className={labelCls}>Fecha vencimiento</label><input type="date" value={formData.fecha_vencimiento || ''} onChange={e => setFormData({...formData, fecha_vencimiento: e.target.value})} className={inputCls} /></div>
-          </div>
-          <div><label className={labelCls}>Notas</label><input value={formData.notas || ''} onChange={e => setFormData({...formData, notas: e.target.value})} placeholder="Opcional" className={inputCls} /></div>
-        </div>
-      );
+        );
+      }
       default: return null;
     }
   };
