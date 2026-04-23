@@ -6,6 +6,15 @@ const EMOJIS_PERSONAS = ['👶','👦','👧','👨','👩','👴','👵','🐶'
 
 const CAMPOS_FECHA = ['fecha', 'fecha_aplicacion', 'proxima_dosis', 'fecha_fin', 'fecha_inicio', 'fecha_vencimiento', 'fecha_emision'];
 
+const TIPOS_DOCUMENTO = {
+  carnet_identidad: 'Carnet de identidad',
+  pasaporte: 'Pasaporte',
+  licencia_conducir: 'Licencia de conducir',
+  seguro_medico: 'Seguro médico',
+  carnet_vacunas: 'Carnet de vacunas',
+  otro: 'Otro',
+};
+
 export default function TabPersonas({ hogarId, userId }) {
   const [personas, setPersonas] = useState([]);
   const [personaActiva, setPersonaActiva] = useState(null);
@@ -164,12 +173,9 @@ export default function TabPersonas({ hogarId, userId }) {
             <label className={labelCls}>Tipo</label>
             <select value={formData.tipo || ''} onChange={e => setFormData({...formData, tipo: e.target.value})} className={inputCls}>
               <option value="">Selecciona...</option>
-              <option>Carnet de identidad</option>
-              <option>Pasaporte</option>
-              <option>Licencia de conducir</option>
-              <option>Seguro médico</option>
-              <option>Contrato</option>
-              <option>Otro</option>
+              {Object.entries(TIPOS_DOCUMENTO).map(([val, label]) => (
+                <option key={val} value={val}>{label}</option>
+              ))}
             </select>
           </div>
           <div><label className={labelCls}>Número / identificador</label><input value={formData.numero || ''} onChange={e => setFormData({...formData, numero: e.target.value})} placeholder="Ej: 12.345.678-9" className={inputCls} /></div>
@@ -225,7 +231,7 @@ export default function TabPersonas({ hogarId, userId }) {
       case 'documentos': return (
         <div className="flex items-start justify-between">
           <div>
-            <div className="text-sm font-medium text-gray-900">{item.tipo}{item.numero ? ` · ${item.numero}` : ''}</div>
+            <div className="text-sm font-medium text-gray-900">{TIPOS_DOCUMENTO[item.tipo] || item.tipo}{item.numero ? ` · ${item.numero}` : ''}</div>
             {item.fecha_emision && <div className="text-xs text-gray-400 mt-0.5">Emitido: {fmt(item.fecha_emision)}</div>}
             {item.fecha_vencimiento && <div className="text-xs text-amber-500 mt-0.5">Vence: {fmt(item.fecha_vencimiento)}</div>}
             {item.notas && <div className="text-xs text-gray-300 mt-0.5">{item.notas}</div>}
