@@ -3,6 +3,16 @@ import { supabase } from './supabase';
 
 const EMOJIS_PERSONAS = ['👶','👦','👧','👨','👩','👴','👵','🐶','🐱','🐾','🦜','🐠','🐰','🐹'];
 
+const CAMPOS_FECHA = ['fecha', 'fecha_aplicacion', 'proxima_dosis', 'hasta_cuando', 'fecha_vencimiento'];
+
+function fmt(fecha) {
+  if (!fecha) return 'Sin fecha';
+  const soloFecha = fecha.includes('T') ? fecha.split('T')[0] : fecha;
+  const d = new Date(soloFecha + 'T00:00:00');
+  if (isNaN(d.getTime())) return 'Sin fecha';
+  return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
 export default function TabPersonas({ hogarId }) {
   const [personas, setPersonas] = useState([]);
   const [personaActiva, setPersonaActiva] = useState(null);
@@ -12,6 +22,7 @@ export default function TabPersonas({ hogarId }) {
   const [cargandoItems, setCargandoItems] = useState(false);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [formData, setFormData] = useState({});
+  const [itemEditando, setItemEditando] = useState(null);
   const [mostrarFormPersona, setMostrarFormPersona] = useState(false);
   const [formPersona, setFormPersona] = useState({ nombre: '', emoji: '👦', tipo: 'humano' });
 
@@ -54,10 +65,26 @@ export default function TabPersonas({ hogarId }) {
   };
 
   const handleGuardarItem = async () => {
-    await supabase.from(subTab).insert([{ ...formData, hogar_id: hogarId, persona_id: personaActiva.id }]);
-    setMostrarForm(false);
-    setFormData({});
+    if (itemEditando) {
+      // Excluir campos de sistema antes del UPDATE
+      const { id, hogar_id, persona_id, created_at, ...campos } = formData; // eslint-disable-line no-unused-vars
+      await supabase.from(subTab).update(campos).eq('id', itemEditando.id);
+    } else {
+      await supabase.from(subTab).insert([{ ...formData, hogar_id: hogarId, persona_id: personaActiva.id }]);
+    }
+    cerrarForm();
     cargarItems();
+  };
+
+  const handleEditarItem = (item) => {
+    const data = { ...item };
+    // Normalizar fechas a YYYY-MM-DD para que el input type="date" las muestre correctamente
+    CAMPOS_FECHA.forEach(f => {
+      if (data[f]) data[f] = data[f].substring(0, 10);
+    });
+    setItemEditando(item);
+    setFormData(data);
+    setMostrarForm(true);
   };
 
   const handleEliminarItem = async (id) => {
@@ -65,9 +92,11 @@ export default function TabPersonas({ hogarId }) {
     cargarItems();
   };
 
-  const fmt = (fecha) => fecha
-    ? new Date(fecha + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })
-    : '—';
+  const cerrarForm = () => {
+    setMostrarForm(false);
+    setFormData({});
+    setItemEditando(null);
+  };
 
   const renderForm = () => {
     switch (subTab) {
@@ -119,7 +148,12 @@ export default function TabPersonas({ hogarId }) {
   };
 
   const renderItem = (item) => {
-    const btn = <button onClick={() => handleEliminarItem(item.id)} className="text-gray-300 hover:text-red-400 text-sm ml-2 shrink-0 transition-colors">✕</button>;
+    const acciones = (
+      <div className="flex items-center gap-1 ml-2 shrink-0">
+        <button onClick={() => handleEditarItem(item)} className="text-gray-300 hover:text-gray-500 text-sm p-0.5 transition-colors">✏️</button>
+        <button onClick={() => handleEliminarItem(item.id)} className="text-gray-300 hover:text-red-400 text-sm p-0.5 transition-colors">✕</button>
+      </div>
+    );
     switch (subTab) {
       case 'citas': return (
         <div className="flex items-start justify-between">
@@ -128,7 +162,7 @@ export default function TabPersonas({ hogarId }) {
             <div className="text-xs text-gray-400 mt-0.5">{fmt(item.fecha)}{item.lugar ? ` · ${item.lugar}` : ''}</div>
             {item.notas && <div className="text-xs text-gray-300 mt-0.5">{item.notas}</div>}
           </div>
-          {btn}
+          {acciones}
         </div>
       );
       case 'vacunas': return (
@@ -138,7 +172,7 @@ export default function TabPersonas({ hogarId }) {
             <div className="text-xs text-gray-400 mt-0.5">Aplicada: {fmt(item.fecha_aplicacion)}</div>
             {item.proxima_dosis && <div className="text-xs text-amber-500 mt-0.5">Próxima: {fmt(item.proxima_dosis)}</div>}
           </div>
-          {btn}
+          {acciones}
         </div>
       );
       case 'medicamentos': return (
@@ -148,7 +182,7 @@ export default function TabPersonas({ hogarId }) {
             <div className="text-xs text-gray-400 mt-0.5">{item.dosis}{item.frecuencia ? ` · ${item.frecuencia}` : ''}</div>
             {item.hasta_cuando && <div className="text-xs text-gray-400 mt-0.5">Hasta: {fmt(item.hasta_cuando)}</div>}
           </div>
-          {btn}
+          {acciones}
         </div>
       );
       case 'documentos': return (
@@ -158,7 +192,7 @@ export default function TabPersonas({ hogarId }) {
             <div className="text-xs text-gray-400 mt-0.5">{item.tipo}</div>
             {item.fecha_vencimiento && <div className="text-xs text-amber-500 mt-0.5">Vence: {fmt(item.fecha_vencimiento)}</div>}
           </div>
-          {btn}
+          {acciones}
         </div>
       );
       default: return null;
@@ -176,7 +210,7 @@ export default function TabPersonas({ hogarId }) {
     return (
       <div>
         <div className="bg-white px-4 pt-4 pb-3 border-b border-gray-100">
-          <button onClick={() => { setPersonaActiva(null); setMostrarForm(false); }} className="text-xs text-gray-400 hover:text-gray-600 transition-colors mb-3">← Volver</button>
+          <button onClick={() => { setPersonaActiva(null); cerrarForm(); }} className="text-xs text-gray-400 hover:text-gray-600 transition-colors mb-3">← Volver</button>
           <div className="flex items-center gap-3">
             <span className="text-3xl">{personaActiva.emoji}</span>
             <div>
@@ -189,7 +223,7 @@ export default function TabPersonas({ hogarId }) {
           {SUB_TABS.map(t => (
             <button
               key={t.id}
-              onClick={() => { setSubTab(t.id); setMostrarForm(false); setFormData({}); }}
+              onClick={() => { setSubTab(t.id); cerrarForm(); }}
               className={`flex-shrink-0 px-4 py-3 text-xs font-medium transition-colors border-b-2 whitespace-nowrap ${
                 subTab === t.id ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-400 hover:text-gray-600'
               }`}
@@ -213,14 +247,19 @@ export default function TabPersonas({ hogarId }) {
               ))}
               {mostrarForm ? (
                 <div className="bg-white border border-gray-200 rounded-xl p-4 mt-2">
+                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                    {itemEditando ? 'Editar registro' : 'Nuevo registro'}
+                  </div>
                   {renderForm()}
                   <div className="flex gap-2 mt-4">
-                    <button onClick={() => { setMostrarForm(false); setFormData({}); }} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Cancelar</button>
-                    <button onClick={handleGuardarItem} className="flex-1 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">Guardar</button>
+                    <button onClick={cerrarForm} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Cancelar</button>
+                    <button onClick={handleGuardarItem} className="flex-1 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">
+                      {itemEditando ? 'Guardar cambios' : 'Guardar'}
+                    </button>
                   </div>
                 </div>
               ) : (
-                <button onClick={() => { setMostrarForm(true); setFormData({}); }} className="w-full py-3 mt-1 border border-dashed border-gray-300 rounded-xl text-sm text-gray-400 hover:border-gray-400 hover:text-gray-500 transition-colors">
+                <button onClick={() => { setMostrarForm(true); setFormData({}); setItemEditando(null); }} className="w-full py-3 mt-1 border border-dashed border-gray-300 rounded-xl text-sm text-gray-400 hover:border-gray-400 hover:text-gray-500 transition-colors">
                   + Agregar
                 </button>
               )}
@@ -240,7 +279,7 @@ export default function TabPersonas({ hogarId }) {
           {personas.map(p => (
             <button
               key={p.id}
-              onClick={() => { setPersonaActiva(p); setSubTab('citas'); setItems([]); setMostrarForm(false); }}
+              onClick={() => { setPersonaActiva(p); setSubTab('citas'); setItems([]); cerrarForm(); }}
               className="w-full flex items-center gap-3 bg-white border border-gray-100 rounded-xl px-4 py-3 mb-2 hover:border-gray-200 transition-colors text-left"
             >
               <span className="text-2xl">{p.emoji}</span>
