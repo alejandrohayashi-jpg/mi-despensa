@@ -475,7 +475,7 @@ function App() {
   const [hogarId, setHogarId] = useState(null);
   const [nombreHogar, setNombreHogar] = useState('');
   const [codigoInvitacion, setCodigoInvitacion] = useState('');
-  const [tabPrincipal, setTabPrincipal] = useState('alimentos');
+  const [tabPrincipal, setTabPrincipal] = useState('inicio');
   const [tab, setTab] = useState('todos');
   const [filtroDestino, setFiltroDestino] = useState('Todos');
   const [productos, setProductos] = useState([]);
