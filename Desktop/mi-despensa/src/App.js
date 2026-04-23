@@ -911,7 +911,7 @@ function App() {
 
       {/* Tab: Personas */}
       {tabPrincipal === 'personas' && (
-        <TabPersonas hogarId={hogarId} />
+        <TabPersonas hogarId={hogarId} userId={session.user.id} />
       )}
 
       {/* Tab: Hogar */}

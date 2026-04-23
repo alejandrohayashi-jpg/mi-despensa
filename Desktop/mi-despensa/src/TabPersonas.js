@@ -4,9 +4,9 @@ import { formatearFecha as fmt, formatearFechaHora } from './utils';
 
 const EMOJIS_PERSONAS = ['👶','👦','👧','👨','👩','👴','👵','🐶','🐱','🐾','🦜','🐠','🐰','🐹'];
 
-const CAMPOS_FECHA = ['fecha', 'fecha_aplicacion', 'proxima_dosis', 'hasta_cuando', 'fecha_vencimiento'];
+const CAMPOS_FECHA = ['fecha', 'fecha_aplicacion', 'proxima_dosis', 'fecha_fin', 'fecha_inicio', 'fecha_vencimiento', 'fecha_emision'];
 
-export default function TabPersonas({ hogarId }) {
+export default function TabPersonas({ hogarId, userId }) {
   const [personas, setPersonas] = useState([]);
   const [personaActiva, setPersonaActiva] = useState(null);
   const [subTab, setSubTab] = useState('citas');
@@ -16,6 +16,7 @@ export default function TabPersonas({ hogarId }) {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [formData, setFormData] = useState({});
   const [itemEditando, setItemEditando] = useState(null);
+  const [errorForm, setErrorForm] = useState('');
   const [mostrarFormPersona, setMostrarFormPersona] = useState(false);
   const [formPersona, setFormPersona] = useState({ nombre: '', emoji: '👦', tipo: 'humano' });
 
@@ -58,38 +59,58 @@ export default function TabPersonas({ hogarId }) {
   };
 
   const handleGuardarItem = async () => {
+    setErrorForm('');
     let datos = { ...formData };
-    // Para citas: combinar fecha + hora en un ISO string antes de guardar
+
+    // Citas: combinar fecha + hora en ISO string
     if (subTab === 'citas' && datos.fecha) {
       datos.fecha = new Date(datos.fecha + 'T' + (datos.hora || '12:00')).toISOString();
       delete datos.hora;
     }
-    if (itemEditando) {
-      // Excluir campos de sistema antes del UPDATE
-      const { id, hogar_id, persona_id, created_at, ...campos } = datos; // eslint-disable-line no-unused-vars
-      await supabase.from(subTab).update(campos).eq('id', itemEditando.id);
-    } else {
-      await supabase.from(subTab).insert([{ ...datos, hogar_id: hogarId, persona_id: personaActiva.id }]);
+
+    // Medicamentos: activo por defecto true si es nuevo
+    if (subTab === 'medicamentos' && !itemEditando) {
+      datos.activo = datos.activo !== undefined ? datos.activo : true;
     }
+
+    let error;
+    if (itemEditando) {
+      const { id, hogar_id, persona_id, created_at, created_by, ...campos } = datos; // eslint-disable-line no-unused-vars
+      ({ error } = await supabase.from(subTab).update(campos).eq('id', itemEditando.id));
+    } else {
+      ({ error } = await supabase.from(subTab).insert([{
+        ...datos,
+        hogar_id: hogarId,
+        persona_id: personaActiva.id,
+        ...(userId ? { created_by: userId } : {}),
+      }]));
+    }
+
+    if (error) {
+      setErrorForm(error.message);
+      return;
+    }
+
     cerrarForm();
     cargarItems();
   };
 
   const handleEditarItem = (item) => {
     const data = { ...item };
-    // Para citas: extraer la hora del ISO string antes de normalizar la fecha
+    // Para citas: extraer hora del ISO antes de normalizar la fecha
     if (subTab === 'citas' && item.fecha) {
       const d = new Date(item.fecha);
       if (!isNaN(d.getTime())) {
         data.hora = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
       }
     }
-    // Normalizar fechas a YYYY-MM-DD para que el input type="date" las muestre correctamente
+    // Normalizar fechas a YYYY-MM-DD para input[type=date]
     CAMPOS_FECHA.forEach(f => {
       if (data[f]) data[f] = String(data[f]).substring(0, 10);
     });
     setItemEditando(item);
     setFormData(data);
+    setErrorForm('');
     setMostrarForm(true);
   };
 
@@ -102,6 +123,7 @@ export default function TabPersonas({ hogarId }) {
     setMostrarForm(false);
     setFormData({});
     setItemEditando(null);
+    setErrorForm('');
   };
 
   const renderForm = () => {
@@ -130,7 +152,10 @@ export default function TabPersonas({ hogarId }) {
           <div><label className={labelCls}>Nombre</label><input value={formData.nombre || ''} onChange={e => setFormData({...formData, nombre: e.target.value})} placeholder="Ej: Ibuprofeno" className={inputCls} /></div>
           <div><label className={labelCls}>Dosis</label><input value={formData.dosis || ''} onChange={e => setFormData({...formData, dosis: e.target.value})} placeholder="Ej: 400mg" className={inputCls} /></div>
           <div><label className={labelCls}>Frecuencia</label><input value={formData.frecuencia || ''} onChange={e => setFormData({...formData, frecuencia: e.target.value})} placeholder="Ej: Cada 8 horas" className={inputCls} /></div>
-          <div><label className={labelCls}>Hasta cuándo</label><input type="date" value={formData.hasta_cuando || ''} onChange={e => setFormData({...formData, hasta_cuando: e.target.value})} className={inputCls} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className={labelCls}>Fecha inicio</label><input type="date" value={formData.fecha_inicio || ''} onChange={e => setFormData({...formData, fecha_inicio: e.target.value})} className={inputCls} /></div>
+            <div><label className={labelCls}>Fecha fin</label><input type="date" value={formData.fecha_fin || ''} onChange={e => setFormData({...formData, fecha_fin: e.target.value})} className={inputCls} /></div>
+          </div>
         </div>
       );
       case 'documentos': return (
@@ -147,8 +172,11 @@ export default function TabPersonas({ hogarId }) {
               <option>Otro</option>
             </select>
           </div>
-          <div><label className={labelCls}>Nombre</label><input value={formData.nombre || ''} onChange={e => setFormData({...formData, nombre: e.target.value})} placeholder="Ej: Carnet Juan" className={inputCls} /></div>
-          <div><label className={labelCls}>Fecha de vencimiento</label><input type="date" value={formData.fecha_vencimiento || ''} onChange={e => setFormData({...formData, fecha_vencimiento: e.target.value})} className={inputCls} /></div>
+          <div><label className={labelCls}>Número / identificador</label><input value={formData.numero || ''} onChange={e => setFormData({...formData, numero: e.target.value})} placeholder="Ej: 12.345.678-9" className={inputCls} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className={labelCls}>Fecha emisión</label><input type="date" value={formData.fecha_emision || ''} onChange={e => setFormData({...formData, fecha_emision: e.target.value})} className={inputCls} /></div>
+            <div><label className={labelCls}>Fecha vencimiento</label><input type="date" value={formData.fecha_vencimiento || ''} onChange={e => setFormData({...formData, fecha_vencimiento: e.target.value})} className={inputCls} /></div>
+          </div>
           <div><label className={labelCls}>Notas</label><input value={formData.notas || ''} onChange={e => setFormData({...formData, notas: e.target.value})} placeholder="Opcional" className={inputCls} /></div>
         </div>
       );
@@ -189,7 +217,7 @@ export default function TabPersonas({ hogarId }) {
           <div>
             <div className="text-sm font-medium text-gray-900">{item.nombre}</div>
             <div className="text-xs text-gray-400 mt-0.5">{item.dosis}{item.frecuencia ? ` · ${item.frecuencia}` : ''}</div>
-            {item.hasta_cuando && <div className="text-xs text-gray-400 mt-0.5">Hasta: {fmt(item.hasta_cuando)}</div>}
+            {item.fecha_fin && <div className="text-xs text-gray-400 mt-0.5">Hasta: {fmt(item.fecha_fin)}</div>}
           </div>
           {acciones}
         </div>
@@ -197,9 +225,10 @@ export default function TabPersonas({ hogarId }) {
       case 'documentos': return (
         <div className="flex items-start justify-between">
           <div>
-            <div className="text-sm font-medium text-gray-900">{item.nombre}</div>
-            <div className="text-xs text-gray-400 mt-0.5">{item.tipo}</div>
+            <div className="text-sm font-medium text-gray-900">{item.tipo}{item.numero ? ` · ${item.numero}` : ''}</div>
+            {item.fecha_emision && <div className="text-xs text-gray-400 mt-0.5">Emitido: {fmt(item.fecha_emision)}</div>}
             {item.fecha_vencimiento && <div className="text-xs text-amber-500 mt-0.5">Vence: {fmt(item.fecha_vencimiento)}</div>}
+            {item.notas && <div className="text-xs text-gray-300 mt-0.5">{item.notas}</div>}
           </div>
           {acciones}
         </div>
@@ -260,6 +289,11 @@ export default function TabPersonas({ hogarId }) {
                     {itemEditando ? 'Editar registro' : 'Nuevo registro'}
                   </div>
                   {renderForm()}
+                  {errorForm && (
+                    <p className="text-xs text-red-600 mt-3 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                      {errorForm}
+                    </p>
+                  )}
                   <div className="flex gap-2 mt-4">
                     <button onClick={cerrarForm} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Cancelar</button>
                     <button onClick={handleGuardarItem} className="flex-1 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">
