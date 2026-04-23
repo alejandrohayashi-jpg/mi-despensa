@@ -147,8 +147,8 @@ export default function Auth() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="text-4xl mb-3">🏠</div>
-          <h1 className="text-xl font-semibold text-gray-900 tracking-tight">MiDespensa</h1>
-          <p className="text-sm text-gray-400 mt-1">Inventario del hogar</p>
+          <h1 className="text-xl font-semibold text-gray-900 tracking-tight">MiHogar</h1>
+          <p className="text-sm text-gray-400 mt-1">Gestión del hogar</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
