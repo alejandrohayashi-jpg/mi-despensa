@@ -4,6 +4,7 @@ import Auth from './Auth';
 import TabInicio from './TabInicio';
 import TabPersonas from './TabPersonas';
 import TabHogar from './TabHogar';
+import { diasParaVencer } from './utils';
 
 const EMOJIS = ['🏠','👶','👦','👧','👨','👩','👴','👵','🐶','🐱','🐾','🍎','🥦','🥛','🍗','🛒','⭐','❤️','🌟','🎯'];
 
@@ -16,18 +17,6 @@ function getEstado(vencimiento) {
   return { texto: 'OK', color: '#3B6D11', bg: '#EAF3DE' };
 }
 
-function diasParaVencer(fechaVencimiento) {
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const vence = new Date(fechaVencimiento + 'T00:00:00');
-  const dias = Math.round((vence - hoy) / (1000 * 60 * 60 * 24));
-  const fechaCorta = vence.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
-  if (dias < 0)  return { texto: `Venció hace ${Math.abs(dias)} día${Math.abs(dias) !== 1 ? 's' : ''}`, cls: 'text-red-600',    fechaCorta };
-  if (dias === 0) return { texto: 'Vence hoy',                                                              cls: 'text-red-600',    fechaCorta };
-  if (dias === 1) return { texto: 'Vence mañana',                                                           cls: 'text-orange-500', fechaCorta };
-  if (dias <= 7)  return { texto: `Vence en ${dias} días`,                                                  cls: 'text-amber-500',  fechaCorta };
-  return           { texto: `Vence en ${dias} días`,                                                        cls: 'text-gray-400',   fechaCorta };
-}
 
 function getDiasStock(producto) {
   const { cantidad, frecuencia_consumo, unidad_consumo } = producto;

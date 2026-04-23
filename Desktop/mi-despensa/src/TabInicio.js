@@ -1,18 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
-
-function diasParaVencer(fechaVencimiento) {
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const vence = new Date(fechaVencimiento + 'T00:00:00');
-  const dias = Math.round((vence - hoy) / (1000 * 60 * 60 * 24));
-  const fechaCorta = vence.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
-  if (dias < 0)  return { texto: `Venció hace ${Math.abs(dias)} día${Math.abs(dias) !== 1 ? 's' : ''}`, cls: 'text-red-600',    dias, fechaCorta };
-  if (dias === 0) return { texto: 'Vence hoy',     cls: 'text-red-600',    dias, fechaCorta };
-  if (dias === 1) return { texto: 'Vence mañana',  cls: 'text-orange-500', dias, fechaCorta };
-  if (dias <= 7)  return { texto: `Vence en ${dias} días`, cls: 'text-amber-500',  dias, fechaCorta };
-  return           { texto: `Vence en ${dias} días`, cls: 'text-gray-400',   dias, fechaCorta };
-}
+import { formatearFecha, diasParaVencer } from './utils';
 
 export default function TabInicio({ hogarId, productos }) {
   const [citas, setCitas] = useState([]);
@@ -42,7 +30,7 @@ export default function TabInicio({ hogarId, productos }) {
   const alertasVenc = productos
     .filter(p => p.vencimiento)
     .map(p => ({ ...p, venc: diasParaVencer(p.vencimiento) }))
-    .filter(p => p.venc.dias <= 7)
+    .filter(p => p.venc.dias !== null && p.venc.dias <= 7)
     .sort((a, b) => a.venc.dias - b.venc.dias);
 
   if (cargando) return (
@@ -87,7 +75,7 @@ export default function TabInicio({ hogarId, productos }) {
                   </div>
                 </div>
                 <span className="text-xs text-gray-500 whitespace-nowrap">
-                  {new Date(c.fecha + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
+                  {formatearFecha(c.fecha)}
                 </span>
               </div>
             ))}

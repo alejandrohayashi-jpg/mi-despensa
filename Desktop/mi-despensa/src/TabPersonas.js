@@ -1,17 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
+import { formatearFecha as fmt } from './utils';
 
 const EMOJIS_PERSONAS = ['👶','👦','👧','👨','👩','👴','👵','🐶','🐱','🐾','🦜','🐠','🐰','🐹'];
 
 const CAMPOS_FECHA = ['fecha', 'fecha_aplicacion', 'proxima_dosis', 'hasta_cuando', 'fecha_vencimiento'];
-
-function fmt(fecha) {
-  if (!fecha) return 'Sin fecha';
-  const soloFecha = fecha.includes('T') ? fecha.split('T')[0] : fecha;
-  const d = new Date(soloFecha + 'T00:00:00');
-  if (isNaN(d.getTime())) return 'Sin fecha';
-  return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
-}
 
 export default function TabPersonas({ hogarId }) {
   const [personas, setPersonas] = useState([]);
