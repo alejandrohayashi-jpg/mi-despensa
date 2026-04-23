@@ -31,6 +31,38 @@ export function formatearFechaHora(fecha) {
   return `${fechaStr} · ${horaStr}`;
 }
 
+// Calcula y formatea la edad a partir de fecha de nacimiento.
+// Para mascotas muestra meses si < 12, para humanos solo años.
+export function calcularEdad(fechaNac, tipo) {
+  if (!fechaNac) return null;
+  const hoy = new Date();
+  const nac = new Date(String(fechaNac).substring(0, 10) + 'T00:00:00');
+  if (isNaN(nac.getTime())) return null;
+  const years = hoy.getFullYear() - nac.getFullYear();
+  const months = hoy.getMonth() - nac.getMonth();
+  const totalMonths = years * 12 + months;
+  if (tipo === 'mascota' && totalMonths < 12) return `${totalMonths} meses`;
+  if (tipo === 'mascota') return `${Math.floor(totalMonths / 12)} años y ${totalMonths % 12} meses`;
+  return `${years} años`;
+}
+
+// Devuelve personas con cumpleaños en los próximos `dias` días, ordenadas por proximidad.
+export function proximosCumpleanos(personas, dias = 30) {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  return personas
+    .filter(p => p.fecha_nac)
+    .map(p => {
+      const nac = new Date(String(p.fecha_nac).substring(0, 10) + 'T00:00:00');
+      let cumple = new Date(hoy.getFullYear(), nac.getMonth(), nac.getDate());
+      if (cumple < hoy) cumple = new Date(hoy.getFullYear() + 1, nac.getMonth(), nac.getDate());
+      const diasHasta = Math.round((cumple - hoy) / (1000 * 60 * 60 * 24));
+      return { ...p, diasHastaCumple: diasHasta, fechaCumple: cumple };
+    })
+    .filter(p => p.diasHastaCumple <= dias)
+    .sort((a, b) => a.diasHastaCumple - b.diasHastaCumple);
+}
+
 // Devuelve días hasta el vencimiento + texto + clase CSS de color.
 // Acepta tanto 'YYYY-MM-DD' como ISO timestamp completo.
 export function diasParaVencer(fechaVencimiento) {

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
-import { formatearFechaHora, diasParaVencer, TIPOS_DOCUMENTO } from './utils';
+import { formatearFechaHora, diasParaVencer, TIPOS_DOCUMENTO, proximosCumpleanos } from './utils';
 
 export default function TabInicio({ hogarId, productos }) {
   const [citas, setCitas] = useState([]);
   const [documentos, setDocumentos] = useState([]);
+  const [cumpleanos, setCumpleanos] = useState([]);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -17,13 +18,15 @@ export default function TabInicio({ hogarId, productos }) {
     const en14 = new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
     const en30 = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
 
-    const [{ data: citasData }, { data: docsData }] = await Promise.all([
+    const [{ data: citasData }, { data: docsData }, { data: personasData }] = await Promise.all([
       supabase.from('citas').select('*, personas(nombre, emoji)').eq('hogar_id', hogarId).gte('fecha', hoy).lte('fecha', en14).order('fecha'),
       supabase.from('documentos').select('*, personas(nombre, emoji)').eq('hogar_id', hogarId).lte('fecha_vencimiento', en30).order('fecha_vencimiento'),
+      supabase.from('personas').select('id, nombre, emoji, tipo, fecha_nac').eq('hogar_id', hogarId).not('fecha_nac', 'is', null),
     ]);
 
     setCitas(citasData || []);
     setDocumentos(docsData || []);
+    setCumpleanos(proximosCumpleanos(personasData || [], 30));
     setCargando(false);
   };
 
@@ -82,6 +85,27 @@ export default function TabInicio({ hogarId, productos }) {
           </div>
         )}
       </section>
+
+      {cumpleanos.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🎂 Próximos cumpleaños</h2>
+          <div className="space-y-2">
+            {cumpleanos.map(p => (
+              <div key={p.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium text-gray-900">{p.emoji} {p.nombre}</div>
+                  <div className="text-xs text-gray-400 mt-0.5">
+                    {p.fechaCumple.toLocaleDateString('es-CL', { day: 'numeric', month: 'long' })}
+                  </div>
+                </div>
+                <span className={`text-xs font-medium ${p.diasHastaCumple === 0 ? 'text-red-500' : 'text-amber-500'}`}>
+                  {p.diasHastaCumple === 0 ? '¡Es hoy!' : `en ${p.diasHastaCumple} día${p.diasHastaCumple !== 1 ? 's' : ''}`}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">📄 Documentos por vencer (30 días)</h2>

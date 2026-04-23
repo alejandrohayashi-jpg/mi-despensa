@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
-import { formatearFecha as fmt, formatearFechaHora, TIPOS_DOCUMENTO } from './utils';
+import { formatearFecha as fmt, formatearFechaHora, TIPOS_DOCUMENTO, calcularEdad } from './utils';
 
 const EMOJIS_PERSONAS = ['👶','👦','👧','👨','👩','👴','👵','🐶','🐱','🐾','🦜','🐠','🐰','🐹'];
 
 const CAMPOS_FECHA = ['fecha', 'fecha_aplicacion', 'proxima_dosis', 'fecha_fin', 'fecha_inicio', 'fecha_vencimiento', 'fecha_emision'];
 
+const FORM_PERSONA_VACIO = { nombre: '', emoji: '👦', tipo: 'humano', fecha_nac: '' };
 
 export default function TabPersonas({ hogarId, userId }) {
   const [personas, setPersonas] = useState([]);
@@ -19,7 +20,8 @@ export default function TabPersonas({ hogarId, userId }) {
   const [itemEditando, setItemEditando] = useState(null);
   const [errorForm, setErrorForm] = useState('');
   const [mostrarFormPersona, setMostrarFormPersona] = useState(false);
-  const [formPersona, setFormPersona] = useState({ nombre: '', emoji: '👦', tipo: 'humano' });
+  const [formPersona, setFormPersona] = useState(FORM_PERSONA_VACIO);
+  const [personaEditando, setPersonaEditando] = useState(null);
 
   const inputCls = 'w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1';
   const labelCls = 'block text-xs font-medium text-gray-500 uppercase tracking-wide';
@@ -51,11 +53,46 @@ export default function TabPersonas({ hogarId, userId }) {
     setCargandoItems(false);
   };
 
-  const handleAgregarPersona = async () => {
-    if (!formPersona.nombre.trim()) return;
-    await supabase.from('personas').insert([{ hogar_id: hogarId, nombre: formPersona.nombre.trim(), emoji: formPersona.emoji, tipo: formPersona.tipo }]);
+  const abrirFormPersona = (persona = null) => {
+    if (persona) {
+      setFormPersona({
+        nombre: persona.nombre,
+        emoji: persona.emoji,
+        tipo: persona.tipo,
+        fecha_nac: persona.fecha_nac ? String(persona.fecha_nac).substring(0, 10) : '',
+      });
+      setPersonaEditando(persona);
+    } else {
+      setFormPersona(FORM_PERSONA_VACIO);
+      setPersonaEditando(null);
+    }
+    setMostrarFormPersona(true);
+  };
+
+  const cerrarFormPersona = () => {
     setMostrarFormPersona(false);
-    setFormPersona({ nombre: '', emoji: '👦', tipo: 'humano' });
+    setFormPersona(FORM_PERSONA_VACIO);
+    setPersonaEditando(null);
+  };
+
+  const handleGuardarPersona = async () => {
+    if (!formPersona.nombre.trim()) return;
+    const datos = {
+      nombre: formPersona.nombre.trim(),
+      emoji: formPersona.emoji,
+      tipo: formPersona.tipo,
+      fecha_nac: formPersona.fecha_nac || null,
+    };
+    if (personaEditando) {
+      await supabase.from('personas').update(datos).eq('id', personaEditando.id);
+      // Actualizar personaActiva si estamos editando la que está abierta
+      if (personaActiva?.id === personaEditando.id) {
+        setPersonaActiva(prev => ({ ...prev, ...datos }));
+      }
+    } else {
+      await supabase.from('personas').insert([{ hogar_id: hogarId, ...datos }]);
+    }
+    cerrarFormPersona();
     cargarPersonas();
   };
 
@@ -63,13 +100,11 @@ export default function TabPersonas({ hogarId, userId }) {
     setErrorForm('');
     let datos = { ...formData };
 
-    // Citas: combinar fecha + hora en ISO string
     if (subTab === 'citas' && datos.fecha) {
       datos.fecha = new Date(datos.fecha + 'T' + (datos.hora || '12:00')).toISOString();
       delete datos.hora;
     }
 
-    // Medicamentos: activo por defecto true si es nuevo
     if (subTab === 'medicamentos' && !itemEditando) {
       datos.activo = datos.activo !== undefined ? datos.activo : true;
     }
@@ -98,14 +133,12 @@ export default function TabPersonas({ hogarId, userId }) {
 
   const handleEditarItem = (item) => {
     const data = { ...item };
-    // Para citas: extraer hora del ISO antes de normalizar la fecha
     if (subTab === 'citas' && item.fecha) {
       const d = new Date(item.fecha);
       if (!isNaN(d.getTime())) {
         data.hora = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
       }
     }
-    // Normalizar fechas a YYYY-MM-DD para input[type=date]
     CAMPOS_FECHA.forEach(f => {
       if (data[f]) data[f] = String(data[f]).substring(0, 10);
     });
@@ -255,15 +288,21 @@ export default function TabPersonas({ hogarId, userId }) {
   ];
 
   if (personaActiva) {
+    const edad = calcularEdad(personaActiva.fecha_nac, personaActiva.tipo);
     return (
       <div>
         <div className="bg-white px-4 pt-4 pb-3 border-b border-gray-100">
-          <button onClick={() => { setPersonaActiva(null); cerrarForm(); }} className="text-xs text-gray-400 hover:text-gray-600 transition-colors mb-3">← Volver</button>
+          <div className="flex items-center justify-between mb-3">
+            <button onClick={() => { setPersonaActiva(null); cerrarForm(); }} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">← Volver</button>
+            <button onClick={() => abrirFormPersona(personaActiva)} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">✏️ Editar</button>
+          </div>
           <div className="flex items-center gap-3">
             <span className="text-3xl">{personaActiva.emoji}</span>
             <div>
               <div className="text-base font-semibold text-gray-900">{personaActiva.nombre}</div>
-              <div className="text-xs text-gray-400 capitalize">{personaActiva.tipo}</div>
+              <div className="text-xs text-gray-400 capitalize">
+                {personaActiva.tipo}{edad ? ` · ${edad}` : ''}
+              </div>
             </div>
           </div>
         </div>
@@ -319,6 +358,29 @@ export default function TabPersonas({ hogarId, userId }) {
             </>
           )}
         </div>
+
+        {/* Modal edición persona desde perfil */}
+        {mostrarFormPersona && (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center pb-safe" onClick={cerrarFormPersona}>
+            <div className="bg-white rounded-t-2xl w-full max-w-md p-5 space-y-3" onClick={e => e.stopPropagation()}>
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Editar persona</div>
+              <div><label className={labelCls}>Nombre</label><input value={formPersona.nombre} onChange={e => setFormPersona({...formPersona, nombre: e.target.value})} placeholder="Ej: Sofía" className={inputCls} /></div>
+              <div><label className={labelCls}>Fecha de nacimiento</label><input type="date" value={formPersona.fecha_nac} onChange={e => setFormPersona({...formPersona, fecha_nac: e.target.value})} className={inputCls} /></div>
+              <div>
+                <label className={labelCls}>Emoji</label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {EMOJIS_PERSONAS.map(e => (
+                    <button key={e} onClick={() => setFormPersona({...formPersona, emoji: e})} className={`w-9 h-9 text-lg rounded-lg transition-colors ${formPersona.emoji === e ? 'border-2 border-gray-900 bg-gray-100' : 'border border-gray-200 bg-white hover:bg-gray-50'}`}>{e}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button onClick={cerrarFormPersona} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Cancelar</button>
+                <button onClick={handleGuardarPersona} className="flex-1 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">Guardar</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -329,24 +391,35 @@ export default function TabPersonas({ hogarId, userId }) {
         <div className="text-center py-10 text-sm text-gray-400">Cargando...</div>
       ) : (
         <>
-          {personas.map(p => (
-            <button
-              key={p.id}
-              onClick={() => { setPersonaActiva(p); setSubTab('citas'); setItems([]); cerrarForm(); }}
-              className="w-full flex items-center gap-3 bg-white border border-gray-100 rounded-xl px-4 py-3 mb-2 hover:border-gray-200 transition-colors text-left"
-            >
-              <span className="text-2xl">{p.emoji}</span>
-              <div className="flex-1">
-                <div className="text-sm font-medium text-gray-900">{p.nombre}</div>
-                <div className="text-xs text-gray-400 capitalize mt-0.5">{p.tipo}</div>
+          {personas.map(p => {
+            const edad = calcularEdad(p.fecha_nac, p.tipo);
+            return (
+              <div key={p.id} className="flex items-center bg-white border border-gray-100 rounded-xl px-4 py-3 mb-2 hover:border-gray-200 transition-colors">
+                <button
+                  onClick={() => { setPersonaActiva(p); setSubTab('citas'); setItems([]); cerrarForm(); }}
+                  className="flex items-center gap-3 flex-1 text-left min-w-0"
+                >
+                  <span className="text-2xl shrink-0">{p.emoji}</span>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-gray-900">{p.nombre}</div>
+                    <div className="text-xs text-gray-400 capitalize mt-0.5">
+                      {p.tipo}{edad ? ` · ${edad}` : ''}
+                    </div>
+                  </div>
+                </button>
+                <button onClick={() => abrirFormPersona(p)} className="text-gray-300 hover:text-gray-500 text-sm p-1 transition-colors ml-2 shrink-0">✏️</button>
+                <span className="text-gray-300 text-base ml-1 shrink-0">›</span>
               </div>
-              <span className="text-gray-300 text-base">›</span>
-            </button>
-          ))}
+            );
+          })}
           {mostrarFormPersona ? (
             <div className="bg-white border border-gray-200 rounded-xl p-4 mt-2">
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                {personaEditando ? 'Editar persona' : 'Nueva persona'}
+              </div>
               <div className="space-y-3">
                 <div><label className={labelCls}>Nombre</label><input value={formPersona.nombre} onChange={e => setFormPersona({...formPersona, nombre: e.target.value})} placeholder="Ej: Sofía" className={inputCls} /></div>
+                <div><label className={labelCls}>Fecha de nacimiento</label><input type="date" value={formPersona.fecha_nac} onChange={e => setFormPersona({...formPersona, fecha_nac: e.target.value})} className={inputCls} /></div>
                 <div>
                   <label className={labelCls}>Tipo</label>
                   <div className="flex gap-2 mt-1">
@@ -367,12 +440,12 @@ export default function TabPersonas({ hogarId, userId }) {
                 </div>
               </div>
               <div className="flex gap-2 mt-4">
-                <button onClick={() => setMostrarFormPersona(false)} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Cancelar</button>
-                <button onClick={handleAgregarPersona} className="flex-1 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">Guardar</button>
+                <button onClick={cerrarFormPersona} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Cancelar</button>
+                <button onClick={handleGuardarPersona} className="flex-1 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">Guardar</button>
               </div>
             </div>
           ) : (
-            <button onClick={() => setMostrarFormPersona(true)} className="w-full py-3 mt-1 border border-dashed border-gray-300 rounded-xl text-sm text-gray-400 hover:border-gray-400 hover:text-gray-500 transition-colors">
+            <button onClick={() => abrirFormPersona()} className="w-full py-3 mt-1 border border-dashed border-gray-300 rounded-xl text-sm text-gray-400 hover:border-gray-400 hover:text-gray-500 transition-colors">
               + Agregar persona
             </button>
           )}
