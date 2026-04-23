@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
-import { formatearFecha as fmt } from './utils';
+import { formatearFecha as fmt, formatearFechaHora } from './utils';
 
 const EMOJIS_PERSONAS = ['👶','👦','👧','👨','👩','👴','👵','🐶','🐱','🐾','🦜','🐠','🐰','🐹'];
 
@@ -58,12 +58,18 @@ export default function TabPersonas({ hogarId }) {
   };
 
   const handleGuardarItem = async () => {
+    let datos = { ...formData };
+    // Para citas: combinar fecha + hora en un ISO string antes de guardar
+    if (subTab === 'citas' && datos.fecha) {
+      datos.fecha = new Date(datos.fecha + 'T' + (datos.hora || '12:00')).toISOString();
+      delete datos.hora;
+    }
     if (itemEditando) {
       // Excluir campos de sistema antes del UPDATE
-      const { id, hogar_id, persona_id, created_at, ...campos } = formData; // eslint-disable-line no-unused-vars
+      const { id, hogar_id, persona_id, created_at, ...campos } = datos; // eslint-disable-line no-unused-vars
       await supabase.from(subTab).update(campos).eq('id', itemEditando.id);
     } else {
-      await supabase.from(subTab).insert([{ ...formData, hogar_id: hogarId, persona_id: personaActiva.id }]);
+      await supabase.from(subTab).insert([{ ...datos, hogar_id: hogarId, persona_id: personaActiva.id }]);
     }
     cerrarForm();
     cargarItems();
@@ -71,9 +77,16 @@ export default function TabPersonas({ hogarId }) {
 
   const handleEditarItem = (item) => {
     const data = { ...item };
+    // Para citas: extraer la hora del ISO string antes de normalizar la fecha
+    if (subTab === 'citas' && item.fecha) {
+      const d = new Date(item.fecha);
+      if (!isNaN(d.getTime())) {
+        data.hora = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      }
+    }
     // Normalizar fechas a YYYY-MM-DD para que el input type="date" las muestre correctamente
     CAMPOS_FECHA.forEach(f => {
-      if (data[f]) data[f] = data[f].substring(0, 10);
+      if (data[f]) data[f] = String(data[f]).substring(0, 10);
     });
     setItemEditando(item);
     setFormData(data);
@@ -96,7 +109,10 @@ export default function TabPersonas({ hogarId }) {
       case 'citas': return (
         <div className="space-y-3">
           <div><label className={labelCls}>Título</label><input value={formData.titulo || ''} onChange={e => setFormData({...formData, titulo: e.target.value})} placeholder="Ej: Control médico" className={inputCls} /></div>
-          <div><label className={labelCls}>Fecha</label><input type="date" value={formData.fecha || ''} onChange={e => setFormData({...formData, fecha: e.target.value})} className={inputCls} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className={labelCls}>Fecha</label><input type="date" value={formData.fecha || ''} onChange={e => setFormData({...formData, fecha: e.target.value})} className={inputCls} /></div>
+            <div><label className={labelCls}>Hora</label><input type="time" value={formData.hora || ''} onChange={e => setFormData({...formData, hora: e.target.value})} className={inputCls} /></div>
+          </div>
           <div><label className={labelCls}>Lugar</label><input value={formData.lugar || ''} onChange={e => setFormData({...formData, lugar: e.target.value})} placeholder="Ej: Clínica Santa María" className={inputCls} /></div>
           <div><label className={labelCls}>Notas</label><input value={formData.notas || ''} onChange={e => setFormData({...formData, notas: e.target.value})} placeholder="Opcional" className={inputCls} /></div>
         </div>
@@ -152,7 +168,7 @@ export default function TabPersonas({ hogarId }) {
         <div className="flex items-start justify-between">
           <div>
             <div className="text-sm font-medium text-gray-900">{item.titulo}</div>
-            <div className="text-xs text-gray-400 mt-0.5">{fmt(item.fecha)}{item.lugar ? ` · ${item.lugar}` : ''}</div>
+            <div className="text-xs text-gray-400 mt-0.5">{formatearFechaHora(item.fecha)}{item.lugar ? ` · ${item.lugar}` : ''}</div>
             {item.notas && <div className="text-xs text-gray-300 mt-0.5">{item.notas}</div>}
           </div>
           {acciones}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
-import { formatearFecha, diasParaVencer } from './utils';
+import { formatearFecha, formatearFechaHora, diasParaVencer } from './utils';
 
 export default function TabInicio({ hogarId, productos }) {
   const [citas, setCitas] = useState([]);
@@ -74,8 +74,8 @@ export default function TabInicio({ hogarId, productos }) {
                     {c.personas?.emoji} {c.personas?.nombre}{c.lugar ? ` · ${c.lugar}` : ''}
                   </div>
                 </div>
-                <span className="text-xs text-gray-500 whitespace-nowrap">
-                  {formatearFecha(c.fecha)}
+                <span className="text-xs text-gray-500 whitespace-nowrap text-right">
+                  {formatearFechaHora(c.fecha)}
                 </span>
               </div>
             ))}

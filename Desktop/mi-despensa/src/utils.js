@@ -11,6 +11,16 @@ export function formatearFecha(fecha) {
   return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+// Formatea fecha + hora juntas desde un ISO string o timestamp de Supabase.
+export function formatearFechaHora(fecha) {
+  if (!fecha) return 'Sin fecha';
+  const d = new Date(fecha);
+  if (isNaN(d.getTime())) return 'Sin fecha';
+  const fechaStr = d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+  const horaStr = d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+  return `${fechaStr} · ${horaStr}`;
+}
+
 // Devuelve días hasta el vencimiento + texto + clase CSS de color.
 // Acepta tanto 'YYYY-MM-DD' como ISO timestamp completo.
 export function diasParaVencer(fechaVencimiento) {
