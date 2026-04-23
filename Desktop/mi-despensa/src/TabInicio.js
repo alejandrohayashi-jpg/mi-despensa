@@ -4,7 +4,7 @@ import { formatearFecha, formatearFechaHora, diasParaVencer, semaforoDias, TIPOS
 
 const LABELS_MANT_VEH = { mantencion: 'Mantención', neumaticos: 'Neumáticos', otro: 'Otro' };
 
-export default function TabInicio({ hogarId, productos }) {
+export default function TabInicio({ hogarId, productos, onNavegar }) {
   const [citas, setCitas] = useState([]);
   const [documentos, setDocumentos] = useState([]);
   const [cumpleanos, setCumpleanos] = useState([]);
@@ -12,6 +12,8 @@ export default function TabInicio({ hogarId, productos }) {
   const [mantPendientes, setMantPendientes] = useState([]);
   const [vacunas, setVacunas] = useState([]);
   const [garantias, setGarantias] = useState([]);
+  const [tareasUrgentes, setTareasUrgentes] = useState([]);
+  const [comprasPendientes, setComprasPendientes] = useState(0);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -34,6 +36,8 @@ export default function TabInicio({ hogarId, productos }) {
       { data: mantVehRaw },
       { data: vacunasData },
       { data: garantiasData },
+      { data: tareasData },
+      { count: comprasCount },
     ] = await Promise.all([
       // Citas: >= hoy y <= hoy+14
       supabase.from('citas')
@@ -90,6 +94,21 @@ export default function TabInicio({ hogarId, productos }) {
         .eq('activo', true)
         .gt('garantia_hasta', hoy).lte('garantia_hasta', en60)
         .order('garantia_hasta'),
+
+      // Tareas urgentes: prioridad alta, sin completar
+      supabase.from('tareas')
+        .select('id, titulo, fecha_limite, categoria')
+        .eq('hogar_id', hogarId)
+        .eq('prioridad', 'alta')
+        .eq('completada', false)
+        .order('fecha_limite', { ascending: true, nullsFirst: false })
+        .limit(5),
+
+      // Compras pendientes: count
+      supabase.from('lista_compras')
+        .select('*', { count: 'exact', head: true })
+        .eq('hogar_id', hogarId)
+        .eq('completado', false),
     ]);
 
     setCitas(citasData || []);
@@ -97,6 +116,8 @@ export default function TabInicio({ hogarId, productos }) {
     setCumpleanos(proximosCumpleanos(personasData || [], 30));
     setVacunas(vacunasData || []);
     setGarantias(garantiasData || []);
+    setTareasUrgentes(tareasData || []);
+    setComprasPendientes(comprasCount || 0);
 
     // Docs vehículos: usar fecha_vencimiento si existe, sino fecha_realizacion
     // Filtrar client-side: fechaEfectiva > hoy y <= en60
@@ -178,6 +199,60 @@ export default function TabInicio({ hogarId, productos }) {
           </div>
         )}
       </section>
+
+      {/* Tareas urgentes */}
+      {tareasUrgentes.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">✅ Tareas urgentes</h2>
+          <div className="space-y-2">
+            {tareasUrgentes.map(t => {
+              const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+              let sem = null;
+              if (t.fecha_limite) {
+                const lim = new Date(String(t.fecha_limite).substring(0, 10) + 'T00:00:00');
+                const dias = Math.round((lim - hoy) / 86400000);
+                if (dias < 0)  sem = { cls: 'text-red-600',    texto: `Venció hace ${Math.abs(dias)}d` };
+                else if (dias === 0) sem = { cls: 'text-red-600', texto: 'Hoy' };
+                else if (dias === 1) sem = { cls: 'text-orange-500', texto: 'Mañana' };
+                else sem = { cls: 'text-gray-400', texto: `en ${dias} días` };
+              }
+              return (
+                <div key={t.id} className={cardCls}>
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">{t.titulo}</div>
+                    {t.categoria && t.categoria !== 'general' && (
+                      <div className="text-xs text-gray-400 mt-0.5">{t.categoria}</div>
+                    )}
+                  </div>
+                  {sem
+                    ? <span className={`text-xs font-medium ${sem.cls}`}>{sem.texto}</span>
+                    : <span className="text-xs text-gray-400">Sin fecha</span>
+                  }
+                </div>
+              );
+            })}
+          </div>
+          {onNavegar && (
+            <button onClick={() => onNavegar('tareas')} className="mt-2 w-full text-xs text-gray-400 hover:text-gray-600 text-center py-1 transition-colors">
+              Ver todas →
+            </button>
+          )}
+        </section>
+      )}
+
+      {/* Compras pendientes */}
+      {comprasPendientes > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🛒 Lista de compras</h2>
+          <div className={`${cardCls} cursor-pointer hover:border-gray-200 transition-colors`} onClick={() => onNavegar && onNavegar('compras')}>
+            <div>
+              <div className="text-sm font-medium text-gray-900">Items pendientes</div>
+              <div className="text-xs text-gray-400 mt-0.5">Toca para ver la lista</div>
+            </div>
+            <span className="text-sm font-semibold text-gray-700">{comprasPendientes} →</span>
+          </div>
+        </section>
+      )}
 
       {/* Citas */}
       {citas.length > 0 && (

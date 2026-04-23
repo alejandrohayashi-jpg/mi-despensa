@@ -5,6 +5,8 @@ import TabInicio from './TabInicio';
 import TabPersonas from './TabPersonas';
 import TabVehiculos from './TabVehiculos';
 import TabEquipos from './TabEquipos';
+import TabCompras from './TabCompras';
+import TabTareas from './TabTareas';
 import TabHogar from './TabHogar';
 import { diasParaVencer } from './utils';
 
@@ -746,6 +748,8 @@ function App() {
     { id: 'personas',  label: 'Personas',  emoji: '👨‍👩‍👧' },
     { id: 'vehiculos', label: 'Vehículos', emoji: '🚗' },
     { id: 'equipos',   label: 'Equipos',   emoji: '🔧' },
+    { id: 'compras',   label: 'Compras',   emoji: '🛒' },
+    { id: 'tareas',    label: 'Tareas',    emoji: '✅' },
     { id: 'hogar',     label: 'Hogar',     emoji: '⚙️' },
   ];
 
@@ -759,7 +763,7 @@ function App() {
 
       {/* Tab: Inicio */}
       {tabPrincipal === 'inicio' && (
-        <TabInicio hogarId={hogarId} productos={productos} />
+        <TabInicio hogarId={hogarId} productos={productos} onNavegar={setTabPrincipal} />
       )}
 
       {/* Tab: Alimentos */}
@@ -928,6 +932,16 @@ function App() {
         <TabEquipos hogarId={hogarId} userId={session.user.id} />
       )}
 
+      {/* Tab: Compras */}
+      {tabPrincipal === 'compras' && (
+        <TabCompras hogarId={hogarId} />
+      )}
+
+      {/* Tab: Tareas */}
+      {tabPrincipal === 'tareas' && (
+        <TabTareas hogarId={hogarId} userId={session.user.id} miembros={miembros} />
+      )}
+
       {/* Tab: Hogar */}
       {tabPrincipal === 'hogar' && (
         <TabHogar
@@ -982,24 +996,26 @@ function App() {
 
       {/* Bottom nav */}
       <div className="fixed bottom-0 left-0 right-0 z-20">
-        <div className="max-w-xl mx-auto bg-white border-t border-gray-100 flex">
-          {NAV.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTabPrincipal(t.id)}
-              className={`relative flex-1 flex flex-col items-center justify-center py-2.5 text-xs font-medium transition-colors ${
-                tabPrincipal === t.id ? 'text-gray-900' : 'text-gray-400'
-              }`}
-            >
-              <span className="text-xl mb-0.5">{t.emoji}</span>
-              {t.label}
-              {t.id === 'hogar' && esAdmin && solicitudes.length > 0 && (
-                <span className="absolute top-1.5 right-[calc(50%-14px)] bg-red-600 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center font-bold leading-none">
-                  {solicitudes.length}
-                </span>
-              )}
-            </button>
-          ))}
+        <div className="max-w-xl mx-auto bg-white border-t border-gray-100 overflow-x-auto">
+          <div className="flex">
+            {NAV.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setTabPrincipal(t.id)}
+                className={`relative flex-shrink-0 w-[72px] flex flex-col items-center justify-center py-2.5 text-xs font-medium transition-colors ${
+                  tabPrincipal === t.id ? 'text-gray-900' : 'text-gray-400'
+                }`}
+              >
+                <span className="text-xl mb-0.5">{t.emoji}</span>
+                {t.label}
+                {t.id === 'hogar' && esAdmin && solicitudes.length > 0 && (
+                  <span className="absolute top-1.5 right-[calc(50%-14px)] bg-red-600 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center font-bold leading-none">
+                    {solicitudes.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
