@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
-import { formatearFecha, formatearFechaHora, diasParaVencer } from './utils';
+import { formatearFechaHora, diasParaVencer } from './utils';
 
 export default function TabInicio({ hogarId, productos }) {
   const [citas, setCitas] = useState([]);
