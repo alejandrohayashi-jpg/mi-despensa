@@ -63,6 +63,27 @@ export function proximosCumpleanos(personas, dias = 30) {
     .sort((a, b) => a.diasHastaCumple - b.diasHastaCumple);
 }
 
+export const TIPOS_DOC_VEHICULO = {
+  revision_tecnica: 'Revisión técnica',
+  permiso_circulacion: 'Permiso de circulación',
+  seguro: 'Seguro',
+  soap: 'SOAP',
+};
+
+// Semáforo para fechas de vehículos/equipos: rojo <30d, amarillo <90d, verde resto.
+export function semaforoDias(fecha) {
+  if (!fecha) return { cls: 'text-gray-400', texto: 'Sin fecha' };
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const vence = new Date(String(fecha).substring(0, 10) + 'T00:00:00');
+  if (isNaN(vence.getTime())) return { cls: 'text-gray-400', texto: 'Sin fecha' };
+  const dias = Math.round((vence - hoy) / 86400000);
+  if (dias < 0)  return { cls: 'text-red-600',   texto: `Venció hace ${Math.abs(dias)} día${Math.abs(dias) !== 1 ? 's' : ''}` };
+  if (dias === 0) return { cls: 'text-red-600',   texto: 'Vence hoy' };
+  if (dias < 30)  return { cls: 'text-red-500',   texto: `Vence en ${dias} día${dias !== 1 ? 's' : ''}` };
+  if (dias < 90)  return { cls: 'text-amber-500', texto: `Vence en ${dias} días` };
+  return            { cls: 'text-green-600',  texto: `Vence en ${dias} días` };
+}
+
 // Devuelve días hasta el vencimiento + texto + clase CSS de color.
 // Acepta tanto 'YYYY-MM-DD' como ISO timestamp completo.
 export function diasParaVencer(fechaVencimiento) {

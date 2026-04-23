@@ -3,6 +3,8 @@ import { supabase } from './supabase';
 import Auth from './Auth';
 import TabInicio from './TabInicio';
 import TabPersonas from './TabPersonas';
+import TabVehiculos from './TabVehiculos';
+import TabEquipos from './TabEquipos';
 import TabHogar from './TabHogar';
 import { diasParaVencer } from './utils';
 
@@ -739,10 +741,12 @@ function App() {
   ];
 
   const NAV = [
-    { id: 'inicio', label: 'Inicio', emoji: '🏠' },
+    { id: 'inicio',    label: 'Inicio',    emoji: '🏠' },
     { id: 'alimentos', label: 'Alimentos', emoji: '🥗' },
-    { id: 'personas', label: 'Personas', emoji: '👨‍👩‍👧' },
-    { id: 'hogar', label: 'Hogar', emoji: '⚙️' },
+    { id: 'personas',  label: 'Personas',  emoji: '👨‍👩‍👧' },
+    { id: 'vehiculos', label: 'Vehículos', emoji: '🚗' },
+    { id: 'equipos',   label: 'Equipos',   emoji: '🔧' },
+    { id: 'hogar',     label: 'Hogar',     emoji: '⚙️' },
   ];
 
   return (
@@ -912,6 +916,16 @@ function App() {
       {/* Tab: Personas */}
       {tabPrincipal === 'personas' && (
         <TabPersonas hogarId={hogarId} userId={session.user.id} />
+      )}
+
+      {/* Tab: Vehículos */}
+      {tabPrincipal === 'vehiculos' && (
+        <TabVehiculos hogarId={hogarId} userId={session.user.id} />
+      )}
+
+      {/* Tab: Equipos */}
+      {tabPrincipal === 'equipos' && (
+        <TabEquipos hogarId={hogarId} userId={session.user.id} />
       )}
 
       {/* Tab: Hogar */}
