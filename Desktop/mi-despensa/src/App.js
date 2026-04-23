@@ -192,7 +192,7 @@ function ModalDestino({ hogarId, onCerrar, onGuardado }) {
   );
 }
 
-function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos }) {
+function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos, tab }) {
   const [form, setForm] = useState(
     productoEditar
       ? {
@@ -205,6 +205,7 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos }) {
       : {
           nombre: '', categoria: '', cantidad: '', unidad: 'un.', vencimiento: '',
           destino: destinos[0]?.nombre || 'Casa General',
+          ubicacion: tab === 'despensa' ? 'despensa' : 'refrigerador',
           frecuencia_consumo: '', unidad_consumo: 'unidad/día', modo_consumo: 'manual',
         }
   );
@@ -273,6 +274,28 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos }) {
               <option>Alimento mascotas</option>
               <option>Otros</option>
             </select>
+          </div>
+          <div>
+            <label className={labelCls}>Ubicación</label>
+            <div className="flex gap-2 mt-2">
+              {[
+                { value: 'refrigerador', label: '🧊 Refrigerador' },
+                { value: 'despensa',     label: '🗄️ Despensa' },
+              ].map(op => (
+                <button
+                  key={op.value}
+                  type="button"
+                  onClick={() => setForm({ ...form, ubicacion: op.value })}
+                  className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    form.ubicacion === op.value
+                      ? 'bg-gray-900 text-white border-2 border-gray-900'
+                      : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {op.label}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -597,14 +620,13 @@ function App() {
   };
 
   const handleGuardar = async (producto) => {
-    const ubicacion = tab === 'todos' ? 'refrigerador' : tab;
     if (productoEditar) {
       await supabase.from('productos').update(producto).eq('id', producto.id);
       await registrarHistorial(producto, 'edicion_manual', productoEditar.cantidad, producto.cantidad, 'Edición manual');
     } else {
       const { data: nuevo } = await supabase
         .from('productos')
-        .insert([{ ...producto, ubicacion, hogar_id: hogarId }])
+        .insert([{ ...producto, hogar_id: hogarId }])
         .select()
         .single();
       await registrarHistorial(
@@ -937,6 +959,7 @@ function App() {
           onCerrar={handleCerrar}
           productoEditar={productoEditar}
           destinos={destinos}
+          tab={tab}
         />
       )}
       {mostrarModalDestino && (
