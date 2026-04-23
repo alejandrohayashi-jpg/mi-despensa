@@ -2,12 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import { formatearFecha, formatearFechaHora, diasParaVencer, semaforoDias, TIPOS_DOCUMENTO, TIPOS_DOC_VEHICULO, proximosCumpleanos } from './utils';
 
+const LABELS_MANT_VEH = { mantencion: 'Mantención', neumaticos: 'Neumáticos', otro: 'Otro' };
+
 export default function TabInicio({ hogarId, productos }) {
   const [citas, setCitas] = useState([]);
   const [documentos, setDocumentos] = useState([]);
   const [cumpleanos, setCumpleanos] = useState([]);
   const [docsVehiculos, setDocsVehiculos] = useState([]);
-  const [mantEquipos, setMantEquipos] = useState([]);
+  const [mantPendientes, setMantPendientes] = useState([]);
+  const [vacunas, setVacunas] = useState([]);
+  const [garantias, setGarantias] = useState([]);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -25,41 +29,115 @@ export default function TabInicio({ hogarId, productos }) {
       { data: citasData },
       { data: docsData },
       { data: personasData },
-      { data: vehDocsData },
-      { data: mantData },
+      { data: vehDocsRaw },
+      { data: mantEquipoRaw },
+      { data: mantVehRaw },
+      { data: vacunasData },
+      { data: garantiasData },
     ] = await Promise.all([
-      supabase.from('citas').select('*, personas(nombre, emoji)').eq('hogar_id', hogarId).gte('fecha', hoy).lte('fecha', en14).order('fecha'),
-      supabase.from('documentos').select('*, personas(nombre, emoji)').eq('hogar_id', hogarId).lte('fecha_vencimiento', en30).order('fecha_vencimiento'),
-      supabase.from('personas').select('id, nombre, emoji, tipo, fecha_nac').eq('hogar_id', hogarId).not('fecha_nac', 'is', null),
-      supabase.from('vehiculo_registros')
-        .select('id, tipo, fecha_vencimiento, vehiculos(nombre, emoji)')
+      // Citas: >= hoy y <= hoy+14
+      supabase.from('citas')
+        .select('*, personas(nombre, emoji)')
         .eq('hogar_id', hogarId)
-        .in('tipo', Object.keys(TIPOS_DOC_VEHICULO))
-        .lte('fecha_vencimiento', en60)
+        .gte('fecha', hoy).lte('fecha', en14)
+        .order('fecha'),
+
+      // Docs personas: > hoy y <= hoy+30
+      supabase.from('documentos')
+        .select('*, personas(nombre, emoji)')
+        .eq('hogar_id', hogarId)
+        .gt('fecha_vencimiento', hoy).lte('fecha_vencimiento', en30)
         .order('fecha_vencimiento'),
-      supabase.from('equipo_registros')
-        .select('id, tipo, proxima_mantencion, equipos(nombre, emoji)')
+
+      // Personas para cumpleaños
+      supabase.from('personas')
+        .select('id, nombre, emoji, tipo, fecha_nac')
         .eq('hogar_id', hogarId)
-        .gte('proxima_mantencion', hoy)
-        .lte('proxima_mantencion', en30)
+        .not('fecha_nac', 'is', null),
+
+      // Docs vehículos: todos los de tipo doc (filtro de fecha en client-side)
+      supabase.from('vehiculo_registros')
+        .select('id, tipo, fecha_vencimiento, fecha_realizacion, vehiculos(nombre, emoji)')
+        .eq('hogar_id', hogarId)
+        .in('tipo', Object.keys(TIPOS_DOC_VEHICULO)),
+
+      // Mantenciones equipos: proxima_mantencion > hoy y <= hoy+30
+      supabase.from('equipo_registros')
+        .select('id, equipo_id, proxima_mantencion, equipos(nombre, emoji)')
+        .eq('hogar_id', hogarId)
+        .gt('proxima_mantencion', hoy).lte('proxima_mantencion', en30)
         .order('proxima_mantencion'),
+
+      // Mantenciones vehículos: fecha_realizacion futura <= hoy+30
+      supabase.from('vehiculo_registros')
+        .select('id, tipo, titulo, fecha_realizacion, vehiculos(nombre, emoji)')
+        .eq('hogar_id', hogarId)
+        .in('tipo', ['mantencion', 'neumaticos', 'otro'])
+        .gt('fecha_realizacion', hoy).lte('fecha_realizacion', en30)
+        .order('fecha_realizacion'),
+
+      // Vacunas: proxima_dosis > hoy y <= hoy+30
+      supabase.from('vacunas')
+        .select('id, nombre, proxima_dosis, personas(nombre, emoji)')
+        .eq('hogar_id', hogarId)
+        .gt('proxima_dosis', hoy).lte('proxima_dosis', en30)
+        .order('proxima_dosis'),
+
+      // Garantías equipos: garantia_hasta > hoy y <= hoy+60
+      supabase.from('equipos')
+        .select('id, nombre, emoji, garantia_hasta')
+        .eq('hogar_id', hogarId)
+        .eq('activo', true)
+        .gt('garantia_hasta', hoy).lte('garantia_hasta', en60)
+        .order('garantia_hasta'),
     ]);
 
     setCitas(citasData || []);
     setDocumentos(docsData || []);
     setCumpleanos(proximosCumpleanos(personasData || [], 30));
+    setVacunas(vacunasData || []);
+    setGarantias(garantiasData || []);
 
-    // Deduplica vehDocsData (mantener el más reciente por tipo+vehiculo_id si hay varios)
-    setDocsVehiculos(vehDocsData || []);
+    // Docs vehículos: usar fecha_vencimiento si existe, sino fecha_realizacion
+    // Filtrar client-side: fechaEfectiva > hoy y <= en60
+    const vehDocsFiltrados = (vehDocsRaw || [])
+      .map(d => ({ ...d, fechaEfectiva: d.fecha_vencimiento || d.fecha_realizacion }))
+      .filter(d => {
+        if (!d.fechaEfectiva) return false;
+        const f = String(d.fechaEfectiva).substring(0, 10);
+        return f > hoy && f <= en60;
+      })
+      .sort((a, b) => String(a.fechaEfectiva).localeCompare(String(b.fechaEfectiva)));
+    setDocsVehiculos(vehDocsFiltrados);
 
-    // Deduplica mantEquipos: solo la más próxima por equipo
-    const seen = new Set();
-    const mantUnicas = (mantData || []).filter(r => {
-      if (seen.has(r.equipo_id)) return false;
-      seen.add(r.equipo_id);
-      return true;
-    });
-    setMantEquipos(mantUnicas);
+    // Mantenciones: merge equipo (dedup por equipo_id) + vehículo, ordenar por fecha
+    const seenEquipos = new Set();
+    const mantEquipos = (mantEquipoRaw || [])
+      .filter(r => {
+        if (seenEquipos.has(r.equipo_id)) return false;
+        seenEquipos.add(r.equipo_id);
+        return true;
+      })
+      .map(m => ({
+        _key: `eq-${m.id}`,
+        fechaEfectiva: m.proxima_mantencion,
+        nombre: m.equipos?.nombre,
+        emoji: m.equipos?.emoji || '🔧',
+        subtitulo: 'Próxima mantención',
+      }));
+
+    const mantVehiculos = (mantVehRaw || []).map(m => ({
+      _key: `veh-${m.id}`,
+      fechaEfectiva: m.fecha_realizacion,
+      nombre: m.vehiculos?.nombre,
+      emoji: m.vehiculos?.emoji || '🚗',
+      subtitulo: LABELS_MANT_VEH[m.tipo] || m.tipo,
+    }));
+
+    setMantPendientes(
+      [...mantEquipos, ...mantVehiculos]
+        .sort((a, b) => String(a.fechaEfectiva).localeCompare(String(b.fechaEfectiva)))
+    );
 
     setCargando(false);
   };
@@ -76,8 +154,12 @@ export default function TabInicio({ hogarId, productos }) {
     </div>
   );
 
+  const cardCls = 'bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between';
+
   return (
     <div className="p-4 space-y-6">
+
+      {/* Alimentos — siempre visible */}
       <section>
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🔔 Vencimientos próximos</h2>
         {alertasVenc.length === 0 ? (
@@ -85,7 +167,7 @@ export default function TabInicio({ hogarId, productos }) {
         ) : (
           <div className="space-y-2">
             {alertasVenc.map(p => (
-              <div key={p.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between">
+              <div key={p.id} className={cardCls}>
                 <div>
                   <div className="text-sm font-medium text-gray-900">{p.nombre}</div>
                   <div className="text-xs text-gray-400 mt-0.5">{p.destino} · {p.cantidad} {p.unidad}</div>
@@ -97,35 +179,33 @@ export default function TabInicio({ hogarId, productos }) {
         )}
       </section>
 
-      <section>
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🗓️ Próximas citas (14 días)</h2>
-        {citas.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-100 p-4 text-sm text-gray-400 text-center">Sin citas próximas</div>
-        ) : (
+      {/* Citas */}
+      {citas.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🗓️ Próximas citas (14 días)</h2>
           <div className="space-y-2">
             {citas.map(c => (
-              <div key={c.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between">
+              <div key={c.id} className={cardCls}>
                 <div>
                   <div className="text-sm font-medium text-gray-900">{c.titulo}</div>
                   <div className="text-xs text-gray-400 mt-0.5">
                     {c.personas?.emoji} {c.personas?.nombre}{c.lugar ? ` · ${c.lugar}` : ''}
                   </div>
                 </div>
-                <span className="text-xs text-gray-500 whitespace-nowrap text-right">
-                  {formatearFechaHora(c.fecha)}
-                </span>
+                <span className="text-xs text-gray-500 whitespace-nowrap text-right">{formatearFechaHora(c.fecha)}</span>
               </div>
             ))}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
+      {/* Cumpleaños */}
       {cumpleanos.length > 0 && (
         <section>
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🎂 Próximos cumpleaños</h2>
           <div className="space-y-2">
             {cumpleanos.map(p => (
-              <div key={p.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between">
+              <div key={p.id} className={cardCls}>
                 <div>
                   <div className="text-sm font-medium text-gray-900">{p.emoji} {p.nombre}</div>
                   <div className="text-xs text-gray-400 mt-0.5">
@@ -141,20 +221,40 @@ export default function TabInicio({ hogarId, productos }) {
         </section>
       )}
 
-      <section>
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🚗 Documentos vehículos (60 días)</h2>
-        {docsVehiculos.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-100 p-4 text-sm text-gray-400 text-center">Sin documentos por vencer</div>
-        ) : (
+      {/* Vacunas */}
+      {vacunas.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">💉 Vacunas próximas (30 días)</h2>
+          <div className="space-y-2">
+            {vacunas.map(v => {
+              const sem = semaforoDias(v.proxima_dosis);
+              return (
+                <div key={v.id} className={cardCls}>
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">{v.personas?.emoji} {v.personas?.nombre}</div>
+                    <div className="text-xs text-gray-400 mt-0.5">{v.nombre} · {formatearFecha(v.proxima_dosis)}</div>
+                  </div>
+                  <span className={`text-xs font-medium ${sem.cls}`}>{sem.texto}</span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Documentos vehículos */}
+      {docsVehiculos.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🚗 Documentos vehículos (60 días)</h2>
           <div className="space-y-2">
             {docsVehiculos.map(d => {
-              const sem = semaforoDias(d.fecha_vencimiento);
+              const sem = semaforoDias(d.fechaEfectiva);
               return (
-                <div key={d.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between">
+                <div key={d.id} className={cardCls}>
                   <div>
                     <div className="text-sm font-medium text-gray-900">{d.vehiculos?.emoji} {d.vehiculos?.nombre}</div>
                     <div className="text-xs text-gray-400 mt-0.5">
-                      {TIPOS_DOC_VEHICULO[d.tipo] || d.tipo} · {formatearFecha(d.fecha_vencimiento)}
+                      {TIPOS_DOC_VEHICULO[d.tipo] || d.tipo} · {formatearFecha(d.fechaEfectiva)}
                     </div>
                   </div>
                   <span className={`text-xs font-medium ${sem.cls}`}>{sem.texto}</span>
@@ -162,41 +262,58 @@ export default function TabInicio({ hogarId, productos }) {
               );
             })}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
-      <section>
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🔧 Mantenciones pendientes (30 días)</h2>
-        {mantEquipos.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-100 p-4 text-sm text-gray-400 text-center">Sin mantenciones próximas</div>
-        ) : (
+      {/* Mantenciones pendientes */}
+      {mantPendientes.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🔧 Mantenciones pendientes (30 días)</h2>
           <div className="space-y-2">
-            {mantEquipos.map(m => {
-              const sem = semaforoDias(m.proxima_mantencion);
+            {mantPendientes.map(m => {
+              const sem = semaforoDias(m.fechaEfectiva);
               return (
-                <div key={m.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between">
+                <div key={m._key} className={cardCls}>
                   <div>
-                    <div className="text-sm font-medium text-gray-900">{m.equipos?.emoji} {m.equipos?.nombre}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">
-                      Próxima mantención · {formatearFecha(m.proxima_mantencion)}
-                    </div>
+                    <div className="text-sm font-medium text-gray-900">{m.emoji} {m.nombre}</div>
+                    <div className="text-xs text-gray-400 mt-0.5">{m.subtitulo} · {formatearFecha(m.fechaEfectiva)}</div>
                   </div>
                   <span className={`text-xs font-medium ${sem.cls}`}>{sem.texto}</span>
                 </div>
               );
             })}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
-      <section>
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">📄 Documentos por vencer (30 días)</h2>
-        {documentos.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-100 p-4 text-sm text-gray-400 text-center">Sin documentos por vencer</div>
-        ) : (
+      {/* Garantías por vencer */}
+      {garantias.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🛡️ Garantías por vencer (60 días)</h2>
+          <div className="space-y-2">
+            {garantias.map(g => {
+              const sem = semaforoDias(g.garantia_hasta);
+              return (
+                <div key={g.id} className={cardCls}>
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">{g.emoji || '🔧'} {g.nombre}</div>
+                    <div className="text-xs text-gray-400 mt-0.5">Garantía hasta {formatearFecha(g.garantia_hasta)}</div>
+                  </div>
+                  <span className={`text-xs font-medium ${sem.cls}`}>{sem.texto}</span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Documentos personas */}
+      {documentos.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">📄 Documentos por vencer (30 días)</h2>
           <div className="space-y-2">
             {documentos.map(d => (
-              <div key={d.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between">
+              <div key={d.id} className={cardCls}>
                 <div>
                   <div className="text-sm font-medium text-gray-900">{d.nombre}</div>
                   <div className="text-xs text-gray-400 mt-0.5">
@@ -209,8 +326,9 @@ export default function TabInicio({ hogarId, productos }) {
               </div>
             ))}
           </div>
-        )}
-      </section>
+        </section>
+      )}
+
     </div>
   );
 }
