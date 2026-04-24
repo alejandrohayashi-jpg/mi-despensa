@@ -181,7 +181,8 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
   };
 
   // DEBUG TEMPORAL — remover después de confirmar
-  console.log('[TabInicio] productos prop:', productos?.length, productos?.slice(0,3));
+  console.log('[TabInicio] primer producto:', JSON.stringify(productos?.[0], null, 2));
+  console.log('[TabInicio] total productos:', productos?.length);
 
   // Filtrado desde prop productos (cargado por App.js, misma tabla y campos)
   const alertasVenc = productos
