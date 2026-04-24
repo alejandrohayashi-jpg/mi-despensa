@@ -197,7 +197,12 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
 
   const tareasUrgentes    = tareasPendientes.filter(t => t.prioridad === 'alta');
   const productosAgotados = alimentosAlerta.filter(p => p.cantidad === 0);
-  const comprasPendientes = comprasItems.length + productosAgotados.length;
+  const porVencer3 = alimentosAlerta.filter(p => {
+    if (p.cantidad === 0) return false;
+    const vence = new Date(p.vencimiento + 'T00:00:00');
+    return Math.ceil((vence - hoy) / 86400000) <= 3;
+  });
+  const comprasPendientes = comprasItems.length + productosAgotados.length + porVencer3.length;
 
   const nombreAsignado = (uid) => {
     if (!uid) return null;
@@ -312,7 +317,7 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
     { id: 'cumpleanos',   icon: '🎂', label: 'Cumpleaños',   tab: 'personas',  count: cumpleanos.length,     minDias: minDiasCumpl  },
     { id: 'vehiculos',    icon: '🚗', label: 'Vehículos',    tab: 'vehiculos', count: docsVehiculos.length,  minDias: minDiasVeh    },
     { id: 'mantenciones', icon: '🔧', label: 'Mantenciones', tab: 'equipos',   count: mantPendientes.length, minDias: minDiasMant   },
-    { id: 'compras',      icon: '🛒', label: 'Compras',      tab: 'compras',   count: comprasPendientes,     minDias: null          },
+    { id: 'compras',      icon: '🛒', label: 'Alimentos & Compras', tab: 'compras', count: comprasPendientes, minDias: null },
     { id: 'tareas',       icon: '✅', label: 'Tareas',       tab: 'tareas',    count: tareasUrgentes.length, minDias: minDiasTareas },
     { id: 'documentos',   icon: '📄', label: 'Documentos',   tab: 'personas',  count: documentos.length,     minDias: minDiasDocs   },
   ];
@@ -425,43 +430,45 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
         });
 
       case 'compras': {
+        const porVencer7 = alimentosAlerta.filter(p => p.cantidad > 0);
         const hayCompras = comprasItems.length > 0;
         const hayReponer = productosAgotados.length > 0;
-        if (!hayCompras && !hayReponer) return vacioMsg('Sin items pendientes');
+        const hayPorVencer = porVencer7.length > 0;
+        if (!hayCompras && !hayReponer && !hayPorVencer) return vacioMsg('Sin items pendientes');
         const supers = [...new Set(comprasItems.map(i => i.supermercado || 'Sin supermercado'))];
         return (
           <div>
-            {hayCompras && (
-              <div>
-                <div className="px-4 py-1.5 bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Lista de compras</div>
-                {supers.map(s => (
-                  <div key={s}>
-                    {supers.length > 1 && (
-                      <div className="px-4 py-1 text-[10px] text-gray-300 uppercase tracking-wide">{s}</div>
-                    )}
-                    {comprasItems.filter(i => (i.supermercado || 'Sin supermercado') === s).map(item => (
-                      <div key={item.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="text-sm text-gray-900">
-                            {item.urgente && <span className="text-red-500 mr-1">⚡</span>}
-                            <span className="font-medium">{item.nombre}</span>
-                          </div>
-                          <div className="text-xs text-gray-400 mt-0.5">
-                            {item.cantidad} {item.unidad}{item.categoria ? ` · ${item.categoria}` : ''}
-                          </div>
-                        </div>
-                        {item.urgente && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-50 text-red-600 font-medium flex-shrink-0">Urgente</span>
-                        )}
+            {/* Sección 1: Lista de compras */}
+            <div className="px-4 py-1.5 bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wide">🛒 Lista de compras</div>
+            {hayCompras ? supers.map(s => (
+              <div key={s}>
+                {supers.length > 1 && (
+                  <div className="px-4 py-1 text-[10px] text-gray-300 uppercase tracking-wide">{s}</div>
+                )}
+                {comprasItems.filter(i => (i.supermercado || 'Sin supermercado') === s).map(item => (
+                  <div key={item.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm text-gray-900">
+                        {item.urgente && <span className="text-red-500 mr-1">⚡</span>}
+                        <span className="font-medium">{item.nombre}</span>
                       </div>
-                    ))}
+                      <div className="text-xs text-gray-400 mt-0.5">
+                        {item.cantidad} {item.unidad}{item.categoria ? ` · ${item.categoria}` : ''}
+                      </div>
+                    </div>
+                    {item.urgente && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-50 text-red-600 font-medium flex-shrink-0">Urgente</span>
+                    )}
                   </div>
                 ))}
               </div>
+            )) : (
+              <div className="px-4 py-2.5 text-xs text-gray-400">Sin items pendientes</div>
             )}
+            {/* Sección 2: Reponer */}
             {hayReponer && (
               <div>
-                <div className="px-4 py-1.5 bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Reponer del inventario</div>
+                <div className="px-4 py-1.5 bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wide">⚠️ Reponer</div>
                 {productosAgotados.map(p => (
                   <div key={p.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
                     <div className="min-w-0">
@@ -473,6 +480,31 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
                     <span className="text-xs font-semibold text-red-600 flex-shrink-0">Sin stock</span>
                   </div>
                 ))}
+              </div>
+            )}
+            {/* Sección 3: Por vencer */}
+            {hayPorVencer && (
+              <div>
+                <div className="px-4 py-1.5 bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wide">📅 Por vencer</div>
+                {porVencer7.map(p => {
+                  const vence = new Date(p.vencimiento + 'T00:00:00');
+                  const dias = Math.ceil((vence - hoy) / 86400000);
+                  let semTxt, semCls;
+                  if (dias < 0) { semTxt = `Venció hace ${Math.abs(dias)} día${Math.abs(dias) !== 1 ? 's' : ''}`; semCls = 'text-red-600'; }
+                  else if (dias === 0) { semTxt = 'Vence hoy'; semCls = 'text-red-600'; }
+                  else { semTxt = `Vence en ${dias} días`; semCls = 'text-orange-500'; }
+                  return (
+                    <div key={p.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-gray-900">{p.nombre}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">
+                          {[p.destino, `${p.cantidad} ${p.unidad || ''}`].filter(Boolean).join(' · ')}
+                        </div>
+                      </div>
+                      <span className={`text-xs font-semibold flex-shrink-0 ${semCls}`}>{semTxt}</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -632,37 +664,6 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
         )}
       </section>}
 
-      {/* Vencimientos próximos (alimentos) */}
-      {alimentosAlerta.length > 0 && (
-        <section>
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🔔 Vencimientos próximos</h2>
-          <div className="space-y-2">
-            {alimentosAlerta.map(p => {
-              let sem;
-              if (p.cantidad === 0) {
-                sem = { cls: 'text-red-600', texto: 'Sin stock' };
-              } else {
-                const vence = new Date(p.vencimiento + 'T00:00:00');
-                const dias = Math.ceil((vence - hoy) / 86400000);
-                if (dias < 0) sem = { cls: 'text-red-600', texto: `Venció hace ${Math.abs(dias)} día${Math.abs(dias) !== 1 ? 's' : ''}` };
-                else if (dias === 0) sem = { cls: 'text-red-600', texto: 'Vence hoy' };
-                else sem = { cls: 'text-orange-500', texto: `Vence en ${dias} días` };
-              }
-              return (
-                <div key={p.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">{p.nombre}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">
-                      {[p.destino, `${p.cantidad} ${p.unidad || ''}`].filter(Boolean).join(' · ')}
-                    </div>
-                  </div>
-                  <span className={`text-xs font-medium ${sem.cls}`}>{sem.texto}</span>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
 
     </div>
   );
