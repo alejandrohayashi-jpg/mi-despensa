@@ -79,7 +79,7 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
       { data: mantVehRaw },
       { data: tareasData },
       { data: comprasData },
-      { data: inventarioData, error: inventarioError },
+      { data: inventarioData },
     ] = await Promise.all([
       supabase.from('citas')
         .select('*, personas(nombre, emoji)')
