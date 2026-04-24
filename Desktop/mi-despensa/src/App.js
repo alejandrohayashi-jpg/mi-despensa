@@ -763,7 +763,7 @@ function App() {
 
       {/* Tab: Inicio */}
       {tabPrincipal === 'inicio' && (
-        <TabInicio hogarId={hogarId} productos={productos} onNavegar={setTabPrincipal} />
+        <TabInicio hogarId={hogarId} productos={productos} userId={session.user.id} onNavegar={setTabPrincipal} />
       )}
 
       {/* Tab: Alimentos */}
