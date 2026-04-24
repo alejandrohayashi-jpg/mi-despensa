@@ -180,18 +180,32 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
     setCargando(false);
   };
 
-  // DEBUG TEMPORAL — remover después de confirmar
-  console.log('[TabInicio] primer producto:', JSON.stringify(productos?.[0], null, 2));
-  console.log('[TabInicio] total productos:', productos?.length);
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
 
-  // Filtrado desde prop productos (cargado por App.js, misma tabla y campos)
-  const alertasVenc = productos
-    .filter(p => p.vencimiento && p.cantidad > 0 && p.modo_consumo !== 'pausado')
-    .map(p => ({ ...p, venc: diasParaVencer(p.vencimiento) }))
-    .filter(p => p.venc.dias !== null && p.venc.dias <= 7)
-    .sort((a, b) => (a.venc.dias ?? 999) - (b.venc.dias ?? 999));
+  const alimentosUrgentes = (productos || []).filter(p => {
+    if (!p.vencimiento) return false;
+    if (p.modo_consumo === 'pausado') return false;
+    const vence = new Date(p.vencimiento);
+    vence.setHours(0, 0, 0, 0);
+    const dias = Math.ceil((vence - hoy) / 86400000);
+    return dias <= 3;
+  }).map(p => {
+    const vence = new Date(p.vencimiento);
+    vence.setHours(0, 0, 0, 0);
+    const dias = Math.ceil((vence - hoy) / 86400000);
+    return {
+      id: p.id,
+      tipo: 'alimento',
+      icono: '🍽️',
+      titulo: p.nombre,
+      subtexto: `${p.destino || 'Casa General'} · ${p.cantidad} ${p.unidad || ''}`,
+      dias,
+      fecha: p.vencimiento,
+    };
+  });
 
-  const alimentosAgotados = productos
+  const alimentosAgotados = (productos || [])
     .filter(p => p.cantidad === 0 && p.modo_consumo !== 'pausado');
 
   const tareasUrgentes  = tareasPendientes.filter(t => t.prioridad === 'alta');
@@ -204,17 +218,11 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
 
   // Lista urgentes mezclada, con subtextos ricos
   const urgentesAll = [
-    ...alertasVenc
-      .filter(p => p.venc.dias <= 3)
-      .map(p => {
-        const subtParts = [p.destino, `${p.cantidad} ${p.unidad}`, p.ubicacion].filter(Boolean);
-        return {
-          _key: `al-${p.id}`, dias: p.venc.dias, icon: '🍽️', tab: 'alimentos',
-          titulo: p.nombre,
-          subtitulo: subtParts.join(' · '),
-          semOverride: { cls: p.venc.cls, texto: p.venc.texto },
-        };
-      }),
+    ...alimentosUrgentes.map(p => ({
+      _key: `al-${p.id}`, dias: p.dias, icon: '🍽️', tab: 'alimentos',
+      titulo: p.titulo,
+      subtitulo: p.subtexto,
+    })),
     ...alimentosAgotados.map(p => ({
       _key: `ag-${p.id}`, dias: -999, icon: '🍽️', tab: 'alimentos',
       titulo: p.nombre,
@@ -599,19 +607,22 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
       </section>}
 
       {/* Vencimientos próximos (alimentos) */}
-      {alertasVenc.length > 0 && (
+      {alimentosUrgentes.length > 0 && (
         <section>
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🔔 Vencimientos próximos</h2>
           <div className="space-y-2">
-            {alertasVenc.map(p => (
-              <div key={p.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-medium text-gray-900">{p.nombre}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">{p.destino} · {p.cantidad} {p.unidad}</div>
+            {alimentosUrgentes.map(p => {
+              const sem = semLabel(p.dias);
+              return (
+                <div key={p.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">{p.titulo}</div>
+                    <div className="text-xs text-gray-400 mt-0.5">{p.subtexto}</div>
+                  </div>
+                  <span className={`text-xs font-medium ${sem.cls}`}>{sem.texto}</span>
                 </div>
-                <span className={`text-xs font-medium ${p.venc.cls}`}>{p.venc.texto}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}
