@@ -54,6 +54,7 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
   const [mantPendientes, setMantPendientes] = useState([]);
   const [tareasPendientes, setTareasPendientes] = useState([]);
   const [comprasItems, setComprasItems] = useState([]);
+  const [inventarioUrgente, setInventarioUrgente] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [tarjetaActiva, setTarjetaActiva] = useState(null);
 
@@ -64,6 +65,7 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
   const cargar = async () => {
     setCargando(true);
     const hoy = new Date().toISOString().split('T')[0];
+    const en7  = new Date(Date.now() +  7 * 86400000).toISOString().split('T')[0];
     const en14 = new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
     const en30 = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
     const en60 = new Date(Date.now() + 60 * 86400000).toISOString().split('T')[0];
@@ -77,6 +79,7 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
       { data: mantVehRaw },
       { data: tareasData },
       { data: comprasData },
+      { data: inventarioData, error: inventarioError },
     ] = await Promise.all([
       supabase.from('citas')
         .select('*, personas(nombre, emoji)')
@@ -101,7 +104,7 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
         .in('tipo', Object.keys(TIPOS_DOC_VEHICULO)),
 
       supabase.from('equipo_registros')
-        .select('id, equipo_id, proxima_mantencion, descripcion, equipos(nombre, emoji)')
+        .select('id, equipo_id, proxima_mantencion, titulo, equipos(nombre, emoji)')
         .eq('hogar_id', hogarId)
         .gt('proxima_mantencion', hoy).lte('proxima_mantencion', en30)
         .order('proxima_mantencion'),
@@ -124,6 +127,15 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
         .eq('hogar_id', hogarId)
         .eq('completado', false)
         .order('supermercado', { nullsFirst: false }),
+
+      supabase.from('inventario')
+        .select('*, destinos(nombre)')
+        .eq('hogar_id', hogarId)
+        .gt('cantidad', 0)
+        .neq('modo_consumo', 'pausado')
+        .gte('fecha_vencimiento', hoy)
+        .lte('fecha_vencimiento', en7)
+        .order('fecha_vencimiento'),
     ]);
 
     setCitas(citasData || []);
@@ -131,6 +143,7 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
     setCumpleanos(proximosCumpleanos(personasData || [], 30));
     setTareasPendientes(tareasData || []);
     setComprasItems(comprasData || []);
+    setInventarioUrgente(inventarioData || []);
 
     const vehDocsFiltrados = (vehDocsRaw || [])
       .map(d => ({ ...d, fechaEfectiva: d.fecha_vencimiento || d.fecha_realizacion }))
@@ -155,7 +168,7 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
         nombre: m.equipos?.nombre,
         emoji: m.equipos?.emoji || '🔧',
         subtitulo: 'Próxima mantención',
-        descripcion: m.descripcion || null,
+        descripcion: m.titulo || null,
         lugar: null,
         patente: null,
       }));
@@ -179,10 +192,9 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
     setCargando(false);
   };
 
-  // Excluir agotados y pausados
-  const alertasVenc = productos
-    .filter(p => p.vencimiento && p.cantidad > 0 && p.modo_consumo !== 'pausado')
-    .map(p => ({ ...p, venc: diasParaVencer(p.vencimiento) }))
+  // Alimentos próximos a vencer (desde tabla inventario)
+  const alertasVenc = inventarioUrgente
+    .map(p => ({ ...p, venc: diasParaVencer(p.fecha_vencimiento) }))
     .filter(p => p.venc.dias !== null && p.venc.dias <= 7)
     .sort((a, b) => a.venc.dias - b.venc.dias);
 
@@ -199,7 +211,7 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
     ...alertasVenc
       .filter(p => p.venc.dias <= 3)
       .map(p => {
-        const subtParts = [p.destino, `${p.cantidad} ${p.unidad}`, p.ubicacion].filter(Boolean);
+        const subtParts = [p.destinos?.nombre, `${p.cantidad} ${p.unidad}`, p.ubicacion].filter(Boolean);
         return {
           _key: `al-${p.id}`, dias: p.venc.dias, icon: '🍽️', tab: 'alimentos',
           titulo: p.nombre,
@@ -550,8 +562,8 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
         )}
       </section>
 
-      {/* Lista urgentes */}
-      <section>
+      {/* Lista urgentes — se oculta cuando hay detalle expandido */}
+      {!tarjetaActiva && <section>
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">⚡ Requiere atención pronto</h2>
         {urgentes.length === 0 ? (
           <div className="bg-green-50 rounded-xl border border-green-100 p-6 text-center">
@@ -582,7 +594,7 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
             })}
           </div>
         )}
-      </section>
+      </section>}
 
       {/* Vencimientos próximos (alimentos) */}
       {alertasVenc.length > 0 && (
@@ -593,7 +605,7 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
               <div key={p.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between">
                 <div>
                   <div className="text-sm font-medium text-gray-900">{p.nombre}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">{p.destino} · {p.cantidad} {p.unidad}</div>
+                  <div className="text-xs text-gray-400 mt-0.5">{p.destinos?.nombre} · {p.cantidad} {p.unidad}</div>
                 </div>
                 <span className={`text-xs font-medium ${p.venc.cls}`}>{p.venc.texto}</span>
               </div>
