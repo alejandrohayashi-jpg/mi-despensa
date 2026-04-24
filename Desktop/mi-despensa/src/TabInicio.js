@@ -180,6 +180,9 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
     setCargando(false);
   };
 
+  // DEBUG TEMPORAL — remover después de confirmar
+  console.log('[TabInicio] productos prop:', productos?.length, productos?.slice(0,3));
+
   // Filtrado desde prop productos (cargado por App.js, misma tabla y campos)
   const alertasVenc = productos
     .filter(p => p.vencimiento && p.cantidad > 0 && p.modo_consumo !== 'pausado')
