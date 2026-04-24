@@ -1,8 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
-import { formatearFecha, formatearFechaHora, diasParaVencer, semaforoDias, TIPOS_DOCUMENTO, TIPOS_DOC_VEHICULO, proximosCumpleanos } from './utils';
+import { diasParaVencer, TIPOS_DOC_VEHICULO, proximosCumpleanos } from './utils';
 
 const LABELS_MANT_VEH = { mantencion: 'Mantención', neumaticos: 'Neumáticos', otro: 'Otro' };
+
+function diasHasta(fecha) {
+  if (!fecha) return null;
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const d = new Date(String(fecha).substring(0, 10) + 'T00:00:00');
+  if (isNaN(d.getTime())) return null;
+  return Math.round((d - hoy) / 86400000);
+}
+
+function minDiasOf(arr, getD) {
+  if (!arr.length) return null;
+  const vals = arr.map(getD).filter(d => d !== null);
+  return vals.length > 0 ? Math.min(...vals) : null;
+}
+
+function cardColors(count, minDias) {
+  if (count === 0)
+    return { card: 'border-gray-100 bg-white',        num: 'text-gray-300',  lbl: 'text-gray-300'  };
+  if (minDias !== null && minDias <= 0)
+    return { card: 'border-red-200 bg-red-50',         num: 'text-red-600',   lbl: 'text-red-500'   };
+  if (minDias !== null && minDias === 1)
+    return { card: 'border-orange-200 bg-orange-50',   num: 'text-orange-600',lbl: 'text-orange-500' };
+  return   { card: 'border-gray-200 bg-white',         num: 'text-gray-800',  lbl: 'text-gray-500'  };
+}
+
+function semLabel(dias) {
+  if (dias === null || dias === undefined)
+    return { cls: 'text-gray-400', texto: 'Sin fecha' };
+  if (dias < 0)
+    return { cls: 'text-red-600',    texto: `Venció hace ${Math.abs(dias)} día${Math.abs(dias) !== 1 ? 's' : ''}` };
+  if (dias === 0)
+    return { cls: 'text-red-600',    texto: 'Hoy' };
+  if (dias === 1)
+    return { cls: 'text-orange-500', texto: 'Mañana' };
+  return   { cls: 'text-gray-500',   texto: `en ${dias} días` };
+}
 
 export default function TabInicio({ hogarId, productos, onNavegar }) {
   const [citas, setCitas] = useState([]);
@@ -10,8 +46,6 @@ export default function TabInicio({ hogarId, productos, onNavegar }) {
   const [cumpleanos, setCumpleanos] = useState([]);
   const [docsVehiculos, setDocsVehiculos] = useState([]);
   const [mantPendientes, setMantPendientes] = useState([]);
-  const [vacunas, setVacunas] = useState([]);
-  const [garantias, setGarantias] = useState([]);
   const [tareasUrgentes, setTareasUrgentes] = useState([]);
   const [comprasPendientes, setComprasPendientes] = useState(0);
   const [cargando, setCargando] = useState(true);
@@ -34,45 +68,37 @@ export default function TabInicio({ hogarId, productos, onNavegar }) {
       { data: vehDocsRaw },
       { data: mantEquipoRaw },
       { data: mantVehRaw },
-      { data: vacunasData },
-      { data: garantiasData },
       { data: tareasData },
       { count: comprasCount },
     ] = await Promise.all([
-      // Citas: >= hoy y <= hoy+14
       supabase.from('citas')
         .select('*, personas(nombre, emoji)')
         .eq('hogar_id', hogarId)
         .gte('fecha', hoy).lte('fecha', en14)
         .order('fecha'),
 
-      // Docs personas: > hoy y <= hoy+30
       supabase.from('documentos')
         .select('*, personas(nombre, emoji)')
         .eq('hogar_id', hogarId)
         .gt('fecha_vencimiento', hoy).lte('fecha_vencimiento', en30)
         .order('fecha_vencimiento'),
 
-      // Personas para cumpleaños
       supabase.from('personas')
         .select('id, nombre, emoji, tipo, fecha_nac')
         .eq('hogar_id', hogarId)
         .not('fecha_nac', 'is', null),
 
-      // Docs vehículos: todos los de tipo doc (filtro de fecha en client-side)
       supabase.from('vehiculo_registros')
         .select('id, tipo, fecha_vencimiento, fecha_realizacion, vehiculos(nombre, emoji)')
         .eq('hogar_id', hogarId)
         .in('tipo', Object.keys(TIPOS_DOC_VEHICULO)),
 
-      // Mantenciones equipos: proxima_mantencion > hoy y <= hoy+30
       supabase.from('equipo_registros')
         .select('id, equipo_id, proxima_mantencion, equipos(nombre, emoji)')
         .eq('hogar_id', hogarId)
         .gt('proxima_mantencion', hoy).lte('proxima_mantencion', en30)
         .order('proxima_mantencion'),
 
-      // Mantenciones vehículos: fecha_realizacion futura <= hoy+30
       supabase.from('vehiculo_registros')
         .select('id, tipo, titulo, fecha_realizacion, vehiculos(nombre, emoji)')
         .eq('hogar_id', hogarId)
@@ -80,31 +106,14 @@ export default function TabInicio({ hogarId, productos, onNavegar }) {
         .gt('fecha_realizacion', hoy).lte('fecha_realizacion', en30)
         .order('fecha_realizacion'),
 
-      // Vacunas: proxima_dosis > hoy y <= hoy+30
-      supabase.from('vacunas')
-        .select('id, nombre, proxima_dosis, personas(nombre, emoji)')
-        .eq('hogar_id', hogarId)
-        .gt('proxima_dosis', hoy).lte('proxima_dosis', en30)
-        .order('proxima_dosis'),
-
-      // Garantías equipos: garantia_hasta > hoy y <= hoy+60
-      supabase.from('equipos')
-        .select('id, nombre, emoji, garantia_hasta')
-        .eq('hogar_id', hogarId)
-        .eq('activo', true)
-        .gt('garantia_hasta', hoy).lte('garantia_hasta', en60)
-        .order('garantia_hasta'),
-
-      // Tareas urgentes: prioridad alta, sin completar
       supabase.from('tareas')
         .select('id, titulo, fecha_limite, categoria')
         .eq('hogar_id', hogarId)
         .eq('prioridad', 'alta')
         .eq('completada', false)
         .order('fecha_limite', { ascending: true, nullsFirst: false })
-        .limit(5),
+        .limit(10),
 
-      // Compras pendientes: count
       supabase.from('lista_compras')
         .select('*', { count: 'exact', head: true })
         .eq('hogar_id', hogarId)
@@ -114,13 +123,9 @@ export default function TabInicio({ hogarId, productos, onNavegar }) {
     setCitas(citasData || []);
     setDocumentos(docsData || []);
     setCumpleanos(proximosCumpleanos(personasData || [], 30));
-    setVacunas(vacunasData || []);
-    setGarantias(garantiasData || []);
     setTareasUrgentes(tareasData || []);
     setComprasPendientes(comprasCount || 0);
 
-    // Docs vehículos: usar fecha_vencimiento si existe, sino fecha_realizacion
-    // Filtrar client-side: fechaEfectiva > hoy y <= en60
     const vehDocsFiltrados = (vehDocsRaw || [])
       .map(d => ({ ...d, fechaEfectiva: d.fecha_vencimiento || d.fecha_realizacion }))
       .filter(d => {
@@ -131,7 +136,6 @@ export default function TabInicio({ hogarId, productos, onNavegar }) {
       .sort((a, b) => String(a.fechaEfectiva).localeCompare(String(b.fechaEfectiva)));
     setDocsVehiculos(vehDocsFiltrados);
 
-    // Mantenciones: merge equipo (dedup por equipo_id) + vehículo, ordenar por fecha
     const seenEquipos = new Set();
     const mantEquipos = (mantEquipoRaw || [])
       .filter(r => {
@@ -163,11 +167,114 @@ export default function TabInicio({ hogarId, productos, onNavegar }) {
     setCargando(false);
   };
 
+  // Fix 1: excluir agotados (cantidad=0) y pausados
   const alertasVenc = productos
-    .filter(p => p.vencimiento)
+    .filter(p => p.vencimiento && p.cantidad > 0 && p.modo_consumo !== 'pausado')
     .map(p => ({ ...p, venc: diasParaVencer(p.vencimiento) }))
     .filter(p => p.venc.dias !== null && p.venc.dias <= 7)
     .sort((a, b) => a.venc.dias - b.venc.dias);
+
+  // Lista urgentes mezclada (todos los módulos), ordenada por días asc
+  const urgentesAll = [
+    ...alertasVenc
+      .filter(p => p.venc.dias <= 3)
+      .map(p => ({
+        _key: `al-${p.id}`,
+        dias: p.venc.dias,
+        titulo: p.nombre,
+        subtitulo: `${p.cantidad} ${p.unidad}`,
+        tab: 'alimentos',
+        icon: '🔔',
+      })),
+    ...citas
+      .filter(c => (diasHasta(c.fecha) ?? 999) <= 3)
+      .map(c => ({
+        _key: `cita-${c.id}`,
+        dias: diasHasta(c.fecha),
+        titulo: c.titulo,
+        subtitulo: c.personas?.nombre || '',
+        tab: 'personas',
+        icon: '📅',
+      })),
+    ...cumpleanos
+      .filter(p => p.diasHastaCumple <= 3)
+      .map(p => ({
+        _key: `cumpl-${p.id}`,
+        dias: p.diasHastaCumple,
+        titulo: p.nombre,
+        subtitulo: 'Cumpleaños',
+        tab: 'personas',
+        icon: '🎂',
+      })),
+    ...mantPendientes
+      .filter(m => (diasHasta(m.fechaEfectiva) ?? 999) <= 7)
+      .map(m => ({
+        _key: m._key,
+        dias: diasHasta(m.fechaEfectiva),
+        titulo: `${m.emoji} ${m.nombre}`,
+        subtitulo: m.subtitulo,
+        tab: m._key.startsWith('veh-') ? 'vehiculos' : 'equipos',
+        icon: '🔧',
+      })),
+    ...docsVehiculos
+      .filter(d => (diasHasta(d.fechaEfectiva) ?? 999) <= 15)
+      .map(d => ({
+        _key: `vd-${d.id}`,
+        dias: diasHasta(d.fechaEfectiva),
+        titulo: `${d.vehiculos?.emoji || '🚗'} ${d.vehiculos?.nombre}`,
+        subtitulo: TIPOS_DOC_VEHICULO[d.tipo] || d.tipo,
+        tab: 'vehiculos',
+        icon: '🚗',
+      })),
+    ...documentos
+      .filter(d => {
+        const r = diasParaVencer(d.fecha_vencimiento);
+        return r.dias !== null && r.dias <= 7;
+      })
+      .map(d => {
+        const r = diasParaVencer(d.fecha_vencimiento);
+        return {
+          _key: `doc-${d.id}`,
+          dias: r.dias,
+          titulo: d.nombre,
+          subtitulo: d.personas?.nombre || '',
+          tab: 'personas',
+          icon: '📄',
+        };
+      }),
+    ...tareasUrgentes
+      .filter(t => t.fecha_limite && (diasHasta(t.fecha_limite) ?? 999) <= 1)
+      .map(t => ({
+        _key: `tarea-${t.id}`,
+        dias: diasHasta(t.fecha_limite) ?? 0,
+        titulo: t.titulo,
+        subtitulo: 'Alta prioridad',
+        tab: 'tareas',
+        icon: '✅',
+      })),
+  ].sort((a, b) => (a.dias ?? 999) - (b.dias ?? 999));
+
+  const urgentes = urgentesAll.slice(0, 5);
+
+  // minDias por módulo para colorear las tarjetas
+  const minDiasCitas  = minDiasOf(citas,         c => diasHasta(c.fecha));
+  const minDiasCumpl  = minDiasOf(cumpleanos,     p => p.diasHastaCumple);
+  const minDiasVeh    = minDiasOf(docsVehiculos,  d => diasHasta(d.fechaEfectiva));
+  const minDiasMant   = minDiasOf(mantPendientes, m => diasHasta(m.fechaEfectiva));
+  const minDiasTareas = minDiasOf(tareasUrgentes.filter(t => t.fecha_limite), t => diasHasta(t.fecha_limite));
+  const minDiasDocs   = minDiasOf(documentos,     d => diasParaVencer(d.fecha_vencimiento).dias);
+  const minDiasAlerta = urgentesAll.length > 0 ? (urgentesAll[0].dias ?? null) : null;
+
+  const tarjetas = [
+    { id: 'alertas',      icon: '🔔', label: 'Alertas',      tab: null,        count: urgentesAll.length,     minDias: minDiasAlerta },
+    { id: 'citas',        icon: '📅', label: 'Citas',        tab: 'personas',  count: citas.length,           minDias: minDiasCitas  },
+    { id: 'cumpleanos',   icon: '🎂', label: 'Cumpleaños',   tab: 'personas',  count: cumpleanos.length,      minDias: minDiasCumpl  },
+    { id: 'vehiculos',    icon: '🚗', label: 'Vehículos',    tab: 'vehiculos', count: docsVehiculos.length,   minDias: minDiasVeh    },
+    { id: 'mantenciones', icon: '🔧', label: 'Mantenciones', tab: 'equipos',   count: mantPendientes.length,  minDias: minDiasMant   },
+    { id: 'compras',      icon: '🛒', label: 'Compras',      tab: 'compras',   count: comprasPendientes,      minDias: null          },
+    { id: 'tareas',       icon: '✅', label: 'Tareas',       tab: 'tareas',    count: tareasUrgentes.length,  minDias: minDiasTareas },
+    { id: 'documentos',   icon: '📄', label: 'Documentos',   tab: 'personas',  count: documentos.length,      minDias: minDiasDocs   },
+  ];
 
   if (cargando) return (
     <div className="flex items-center justify-center py-20">
@@ -175,229 +282,76 @@ export default function TabInicio({ hogarId, productos, onNavegar }) {
     </div>
   );
 
-  const cardCls = 'bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between';
-
   return (
     <div className="p-4 space-y-6">
 
-      {/* Alimentos — siempre visible */}
+      {/* Tarjetas resumen 4x2 */}
       <section>
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🔔 Vencimientos próximos</h2>
-        {alertasVenc.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-100 p-4 text-sm text-gray-400 text-center">Sin alertas de vencimiento</div>
+        <div className="grid grid-cols-4 gap-2">
+          {tarjetas.map(t => {
+            const { card, num, lbl } = cardColors(t.count, t.minDias);
+            return (
+              <button
+                key={t.id}
+                onClick={() => t.tab && onNavegar && onNavegar(t.tab)}
+                disabled={!t.tab}
+                className={`rounded-xl border-2 py-3 px-1 flex flex-col items-center justify-center text-center gap-0.5 transition-all ${card} ${t.tab ? 'active:scale-95' : ''}`}
+              >
+                <span className="text-xl leading-none">{t.icon}</span>
+                <span className={`text-lg font-bold leading-tight ${num}`}>{t.count}</span>
+                <span className={`text-[10px] font-medium leading-tight ${lbl}`}>{t.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Lista urgentes */}
+      <section>
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">⚡ Requiere atención pronto</h2>
+        {urgentes.length === 0 ? (
+          <div className="bg-green-50 rounded-xl border border-green-100 p-6 text-center">
+            <div className="text-3xl mb-2">✅</div>
+            <div className="text-sm font-semibold text-green-700">Todo en orden en tu hogar</div>
+            <div className="text-xs text-green-500 mt-1">No hay items urgentes</div>
+          </div>
         ) : (
           <div className="space-y-2">
+            {urgentes.map(u => {
+              const sem = semLabel(u.dias);
+              return (
+                <div
+                  key={u._key}
+                  className={`bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between transition-colors ${u.tab ? 'cursor-pointer hover:border-gray-200' : ''}`}
+                  onClick={() => u.tab && onNavegar && onNavegar(u.tab)}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-lg flex-shrink-0">{u.icon}</span>
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-gray-900 truncate">{u.titulo}</div>
+                      {u.subtitulo && <div className="text-xs text-gray-400 mt-0.5 truncate">{u.subtitulo}</div>}
+                    </div>
+                  </div>
+                  <span className={`text-xs font-semibold flex-shrink-0 ml-3 ${sem.cls}`}>{sem.texto}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Vencimientos próximos (alimentos) */}
+      {alertasVenc.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🔔 Vencimientos próximos</h2>
+          <div className="space-y-2">
             {alertasVenc.map(p => (
-              <div key={p.id} className={cardCls}>
+              <div key={p.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between">
                 <div>
                   <div className="text-sm font-medium text-gray-900">{p.nombre}</div>
                   <div className="text-xs text-gray-400 mt-0.5">{p.destino} · {p.cantidad} {p.unidad}</div>
                 </div>
                 <span className={`text-xs font-medium ${p.venc.cls}`}>{p.venc.texto}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Tareas urgentes */}
-      {tareasUrgentes.length > 0 && (
-        <section>
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">✅ Tareas urgentes</h2>
-          <div className="space-y-2">
-            {tareasUrgentes.map(t => {
-              const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-              let sem = null;
-              if (t.fecha_limite) {
-                const lim = new Date(String(t.fecha_limite).substring(0, 10) + 'T00:00:00');
-                const dias = Math.round((lim - hoy) / 86400000);
-                if (dias < 0)  sem = { cls: 'text-red-600',    texto: `Venció hace ${Math.abs(dias)}d` };
-                else if (dias === 0) sem = { cls: 'text-red-600', texto: 'Hoy' };
-                else if (dias === 1) sem = { cls: 'text-orange-500', texto: 'Mañana' };
-                else sem = { cls: 'text-gray-400', texto: `en ${dias} días` };
-              }
-              return (
-                <div key={t.id} className={cardCls}>
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">{t.titulo}</div>
-                    {t.categoria && t.categoria !== 'general' && (
-                      <div className="text-xs text-gray-400 mt-0.5">{t.categoria}</div>
-                    )}
-                  </div>
-                  {sem
-                    ? <span className={`text-xs font-medium ${sem.cls}`}>{sem.texto}</span>
-                    : <span className="text-xs text-gray-400">Sin fecha</span>
-                  }
-                </div>
-              );
-            })}
-          </div>
-          {onNavegar && (
-            <button onClick={() => onNavegar('tareas')} className="mt-2 w-full text-xs text-gray-400 hover:text-gray-600 text-center py-1 transition-colors">
-              Ver todas →
-            </button>
-          )}
-        </section>
-      )}
-
-      {/* Compras pendientes */}
-      {comprasPendientes > 0 && (
-        <section>
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🛒 Lista de compras</h2>
-          <div className={`${cardCls} cursor-pointer hover:border-gray-200 transition-colors`} onClick={() => onNavegar && onNavegar('compras')}>
-            <div>
-              <div className="text-sm font-medium text-gray-900">Items pendientes</div>
-              <div className="text-xs text-gray-400 mt-0.5">Toca para ver la lista</div>
-            </div>
-            <span className="text-sm font-semibold text-gray-700">{comprasPendientes} →</span>
-          </div>
-        </section>
-      )}
-
-      {/* Citas */}
-      {citas.length > 0 && (
-        <section>
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🗓️ Próximas citas (14 días)</h2>
-          <div className="space-y-2">
-            {citas.map(c => (
-              <div key={c.id} className={cardCls}>
-                <div>
-                  <div className="text-sm font-medium text-gray-900">{c.titulo}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">
-                    {c.personas?.emoji} {c.personas?.nombre}{c.lugar ? ` · ${c.lugar}` : ''}
-                  </div>
-                </div>
-                <span className="text-xs text-gray-500 whitespace-nowrap text-right">{formatearFechaHora(c.fecha)}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Cumpleaños */}
-      {cumpleanos.length > 0 && (
-        <section>
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🎂 Próximos cumpleaños</h2>
-          <div className="space-y-2">
-            {cumpleanos.map(p => (
-              <div key={p.id} className={cardCls}>
-                <div>
-                  <div className="text-sm font-medium text-gray-900">{p.emoji} {p.nombre}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">
-                    {p.fechaCumple.toLocaleDateString('es-CL', { day: 'numeric', month: 'long' })}
-                  </div>
-                </div>
-                <span className={`text-xs font-medium ${p.diasHastaCumple === 0 ? 'text-red-500' : 'text-amber-500'}`}>
-                  {p.diasHastaCumple === 0 ? '¡Es hoy!' : `en ${p.diasHastaCumple} día${p.diasHastaCumple !== 1 ? 's' : ''}`}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Vacunas */}
-      {vacunas.length > 0 && (
-        <section>
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">💉 Vacunas próximas (30 días)</h2>
-          <div className="space-y-2">
-            {vacunas.map(v => {
-              const sem = semaforoDias(v.proxima_dosis);
-              return (
-                <div key={v.id} className={cardCls}>
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">{v.personas?.emoji} {v.personas?.nombre}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">{v.nombre} · {formatearFecha(v.proxima_dosis)}</div>
-                  </div>
-                  <span className={`text-xs font-medium ${sem.cls}`}>{sem.texto}</span>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* Documentos vehículos */}
-      {docsVehiculos.length > 0 && (
-        <section>
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🚗 Documentos vehículos (60 días)</h2>
-          <div className="space-y-2">
-            {docsVehiculos.map(d => {
-              const sem = semaforoDias(d.fechaEfectiva);
-              return (
-                <div key={d.id} className={cardCls}>
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">{d.vehiculos?.emoji} {d.vehiculos?.nombre}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">
-                      {TIPOS_DOC_VEHICULO[d.tipo] || d.tipo} · {formatearFecha(d.fechaEfectiva)}
-                    </div>
-                  </div>
-                  <span className={`text-xs font-medium ${sem.cls}`}>{sem.texto}</span>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* Mantenciones pendientes */}
-      {mantPendientes.length > 0 && (
-        <section>
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🔧 Mantenciones pendientes (30 días)</h2>
-          <div className="space-y-2">
-            {mantPendientes.map(m => {
-              const sem = semaforoDias(m.fechaEfectiva);
-              return (
-                <div key={m._key} className={cardCls}>
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">{m.emoji} {m.nombre}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">{m.subtitulo} · {formatearFecha(m.fechaEfectiva)}</div>
-                  </div>
-                  <span className={`text-xs font-medium ${sem.cls}`}>{sem.texto}</span>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* Garantías por vencer */}
-      {garantias.length > 0 && (
-        <section>
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🛡️ Garantías por vencer (60 días)</h2>
-          <div className="space-y-2">
-            {garantias.map(g => {
-              const sem = semaforoDias(g.garantia_hasta);
-              return (
-                <div key={g.id} className={cardCls}>
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">{g.emoji || '🔧'} {g.nombre}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">Garantía hasta {formatearFecha(g.garantia_hasta)}</div>
-                  </div>
-                  <span className={`text-xs font-medium ${sem.cls}`}>{sem.texto}</span>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* Documentos personas */}
-      {documentos.length > 0 && (
-        <section>
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">📄 Documentos por vencer (30 días)</h2>
-          <div className="space-y-2">
-            {documentos.map(d => (
-              <div key={d.id} className={cardCls}>
-                <div>
-                  <div className="text-sm font-medium text-gray-900">{d.nombre}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">
-                    {d.personas?.emoji} {d.personas?.nombre}{d.tipo ? ` · ${TIPOS_DOCUMENTO[d.tipo] || d.tipo}` : ''}
-                  </div>
-                </div>
-                <span className={`text-xs font-medium ${diasParaVencer(d.fecha_vencimiento).cls}`}>
-                  {diasParaVencer(d.fecha_vencimiento).texto}
-                </span>
               </div>
             ))}
           </div>
