@@ -198,11 +198,15 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
   const urgentesAll = [
     ...alertasVenc
       .filter(p => p.venc.dias <= 3)
-      .map(p => ({
-        _key: `al-${p.id}`, dias: p.venc.dias, icon: '🔔', tab: 'alimentos',
-        titulo: p.nombre,
-        subtitulo: `${p.cantidad} ${p.unidad}`,
-      })),
+      .map(p => {
+        const subtParts = [p.destino, `${p.cantidad} ${p.unidad}`, p.ubicacion].filter(Boolean);
+        return {
+          _key: `al-${p.id}`, dias: p.venc.dias, icon: '🍽️', tab: 'alimentos',
+          titulo: p.nombre,
+          subtitulo: subtParts.join(' · '),
+          semOverride: { cls: p.venc.cls, texto: p.venc.texto },
+        };
+      }),
     ...citas
       .filter(c => (diasHasta(c.fecha) ?? 999) <= 3)
       .map(c => {
@@ -251,10 +255,14 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
       })
       .map(d => {
         const r = diasParaVencer(d.fecha_vencimiento);
+        const tipoLabel = TIPOS_DOCUMENTO[d.tipo] || d.tipo;
+        const venceStr = d.fecha_vencimiento
+          ? `Vence el ${formatearFecha(d.fecha_vencimiento)}`
+          : 'Sin vencimiento';
         return {
           _key: `doc-${d.id}`, dias: r.dias, icon: '📄', tab: 'personas',
-          titulo: d.nombre,
-          subtitulo: [d.personas?.nombre, TIPOS_DOCUMENTO[d.tipo] || d.tipo].filter(Boolean).join(' · '),
+          titulo: [d.personas?.emoji, d.personas?.nombre || d.nombre].filter(Boolean).join(' '),
+          subtitulo: `${tipoLabel} · ${venceStr}`,
         };
       }),
     ...tareasUrgentes
@@ -299,7 +307,7 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
 
       case 'alertas':
         return urgentesAll.length === 0 ? vacioMsg('No hay items urgentes') : urgentesAll.map(u => {
-          const sem = semLabel(u.dias);
+          const sem = u.semOverride || semLabel(u.dias);
           return (
             <div key={u._key} className={`px-4 py-3 flex items-center justify-between gap-3 ${u.tab ? 'cursor-pointer hover:bg-gray-50' : ''} transition-colors`}
               onClick={() => u.tab && onNavegar && onNavegar(u.tab)}>
@@ -463,14 +471,15 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
       case 'documentos':
         return documentos.length === 0 ? vacioMsg('Sin documentos por vencer') : documentos.map(d => {
           const venc = diasParaVencer(d.fecha_vencimiento);
+          const tipoLabel = TIPOS_DOCUMENTO[d.tipo] || d.tipo;
+          const venceStr = d.fecha_vencimiento
+            ? `Vence el ${formatearFecha(d.fecha_vencimiento)}`
+            : 'Sin vencimiento';
           return (
             <div key={d.id} className="px-4 py-3 flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-gray-900">{d.personas?.emoji} {d.personas?.nombre}</div>
-                <div className="text-xs text-gray-500 mt-0.5">
-                  {TIPOS_DOCUMENTO[d.tipo] || d.tipo}{d.numero ? ` · ${d.numero}` : ''}
-                </div>
-                <div className="text-xs text-gray-400 mt-0.5">{formatearFecha(d.fecha_vencimiento)}</div>
+                <div className="text-xs text-gray-500 mt-0.5">{tipoLabel} · {venceStr}</div>
               </div>
               <span className={`text-xs font-semibold flex-shrink-0 ${venc.cls}`}>{venc.texto}</span>
             </div>
@@ -553,7 +562,7 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
         ) : (
           <div className="space-y-2">
             {urgentes.map(u => {
-              const sem = semLabel(u.dias);
+              const sem = u.semOverride || semLabel(u.dias);
               return (
                 <div
                   key={u._key}
