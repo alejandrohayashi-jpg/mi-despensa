@@ -65,7 +65,6 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
   const cargar = async () => {
     setCargando(true);
     const hoy = new Date().toISOString().split('T')[0];
-    const en7  = new Date(Date.now() +  7 * 86400000).toISOString().split('T')[0];
     const en14 = new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
     const en30 = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
     const en60 = new Date(Date.now() + 60 * 86400000).toISOString().split('T')[0];
@@ -129,13 +128,8 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
         .order('supermercado', { nullsFirst: false }),
 
       supabase.from('productos')
-        .select('id, nombre, cantidad, unidad, vencimiento, modo_consumo, ubicacion, destino')
-        .eq('hogar_id', hogarId)
-        .gt('cantidad', 0)
-        .neq('modo_consumo', 'pausado')
-        .gte('vencimiento', hoy)
-        .lte('vencimiento', en7)
-        .order('vencimiento'),
+        .select('*')
+        .eq('hogar_id', hogarId),
     ]);
 
     setCitas(citasData || []);
@@ -192,11 +186,12 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
     setCargando(false);
   };
 
-  // Alimentos próximos a vencer (desde tabla productos)
+  // Alimentos con vencimiento urgente — filtrado 100% en cliente (igual que tab Alimentos)
   const alertasVenc = inventarioUrgente
+    .filter(p => p.vencimiento && p.cantidad > 0 && p.modo_consumo !== 'pausado')
     .map(p => ({ ...p, venc: diasParaVencer(p.vencimiento) }))
     .filter(p => p.venc.dias !== null && p.venc.dias <= 7)
-    .sort((a, b) => a.venc.dias - b.venc.dias);
+    .sort((a, b) => (a.venc.dias ?? 999) - (b.venc.dias ?? 999));
 
   const tareasUrgentes  = tareasPendientes.filter(t => t.prioridad === 'alta');
   const comprasPendientes = comprasItems.length;
