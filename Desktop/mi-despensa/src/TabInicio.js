@@ -54,7 +54,6 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
   const [mantPendientes, setMantPendientes] = useState([]);
   const [tareasPendientes, setTareasPendientes] = useState([]);
   const [comprasItems, setComprasItems] = useState([]);
-  const [inventarioUrgente, setInventarioUrgente] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [tarjetaActiva, setTarjetaActiva] = useState(null);
 
@@ -78,7 +77,6 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
       { data: mantVehRaw },
       { data: tareasData },
       { data: comprasData },
-      { data: inventarioData },
     ] = await Promise.all([
       supabase.from('citas')
         .select('*, personas(nombre, emoji)')
@@ -127,9 +125,6 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
         .eq('completado', false)
         .order('supermercado', { nullsFirst: false }),
 
-      supabase.from('productos')
-        .select('*')
-        .eq('hogar_id', hogarId),
     ]);
 
     setCitas(citasData || []);
@@ -137,7 +132,6 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
     setCumpleanos(proximosCumpleanos(personasData || [], 30));
     setTareasPendientes(tareasData || []);
     setComprasItems(comprasData || []);
-    setInventarioUrgente(inventarioData || []);
 
     const vehDocsFiltrados = (vehDocsRaw || [])
       .map(d => ({ ...d, fechaEfectiva: d.fecha_vencimiento || d.fecha_realizacion }))
@@ -186,12 +180,15 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
     setCargando(false);
   };
 
-  // Alimentos con vencimiento urgente — filtrado 100% en cliente (igual que tab Alimentos)
-  const alertasVenc = inventarioUrgente
+  // Filtrado desde prop productos (cargado por App.js, misma tabla y campos)
+  const alertasVenc = productos
     .filter(p => p.vencimiento && p.cantidad > 0 && p.modo_consumo !== 'pausado')
     .map(p => ({ ...p, venc: diasParaVencer(p.vencimiento) }))
     .filter(p => p.venc.dias !== null && p.venc.dias <= 7)
     .sort((a, b) => (a.venc.dias ?? 999) - (b.venc.dias ?? 999));
+
+  const alimentosAgotados = productos
+    .filter(p => p.cantidad === 0 && p.modo_consumo !== 'pausado');
 
   const tareasUrgentes  = tareasPendientes.filter(t => t.prioridad === 'alta');
   const comprasPendientes = comprasItems.length;
@@ -214,6 +211,12 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
           semOverride: { cls: p.venc.cls, texto: p.venc.texto },
         };
       }),
+    ...alimentosAgotados.map(p => ({
+      _key: `ag-${p.id}`, dias: -999, icon: '🍽️', tab: 'alimentos',
+      titulo: p.nombre,
+      subtitulo: [p.destino, p.ubicacion].filter(Boolean).join(' · '),
+      semOverride: { cls: 'text-red-600', texto: 'Sin stock' },
+    })),
     ...citas
       .filter(c => (diasHasta(c.fecha) ?? 999) <= 3)
       .map(c => {
