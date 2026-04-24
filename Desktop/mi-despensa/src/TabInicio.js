@@ -128,14 +128,14 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
         .eq('completado', false)
         .order('supermercado', { nullsFirst: false }),
 
-      supabase.from('inventario')
-        .select('*, destinos(nombre)')
+      supabase.from('productos')
+        .select('id, nombre, cantidad, unidad, vencimiento, modo_consumo, ubicacion, destino')
         .eq('hogar_id', hogarId)
         .gt('cantidad', 0)
         .neq('modo_consumo', 'pausado')
-        .gte('fecha_vencimiento', hoy)
-        .lte('fecha_vencimiento', en7)
-        .order('fecha_vencimiento'),
+        .gte('vencimiento', hoy)
+        .lte('vencimiento', en7)
+        .order('vencimiento'),
     ]);
 
     setCitas(citasData || []);
@@ -192,9 +192,9 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
     setCargando(false);
   };
 
-  // Alimentos próximos a vencer (desde tabla inventario)
+  // Alimentos próximos a vencer (desde tabla productos)
   const alertasVenc = inventarioUrgente
-    .map(p => ({ ...p, venc: diasParaVencer(p.fecha_vencimiento) }))
+    .map(p => ({ ...p, venc: diasParaVencer(p.vencimiento) }))
     .filter(p => p.venc.dias !== null && p.venc.dias <= 7)
     .sort((a, b) => a.venc.dias - b.venc.dias);
 
@@ -211,7 +211,7 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
     ...alertasVenc
       .filter(p => p.venc.dias <= 3)
       .map(p => {
-        const subtParts = [p.destinos?.nombre, `${p.cantidad} ${p.unidad}`, p.ubicacion].filter(Boolean);
+        const subtParts = [p.destino, `${p.cantidad} ${p.unidad}`, p.ubicacion].filter(Boolean);
         return {
           _key: `al-${p.id}`, dias: p.venc.dias, icon: '🍽️', tab: 'alimentos',
           titulo: p.nombre,
@@ -605,7 +605,7 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
               <div key={p.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between">
                 <div>
                   <div className="text-sm font-medium text-gray-900">{p.nombre}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">{p.destinos?.nombre} · {p.cantidad} {p.unidad}</div>
+                  <div className="text-xs text-gray-400 mt-0.5">{p.destino} · {p.cantidad} {p.unidad}</div>
                 </div>
                 <span className={`text-xs font-medium ${p.venc.cls}`}>{p.venc.texto}</span>
               </div>
