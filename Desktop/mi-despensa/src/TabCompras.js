@@ -100,7 +100,7 @@ export default function TabCompras({ hogarId }) {
   const supermercados = [...new Set(listaFiltrada.map(i => i.supermercado || 'Sin supermercado'))];
   const completadosCount = items.filter(i => i.completado).length;
 
-  const inputCls = 'w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1';
+  const inputCls = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1';
   const labelCls = 'block text-xs font-medium text-gray-500 uppercase tracking-wide';
 
   if (cargando) return (
@@ -119,7 +119,8 @@ export default function TabCompras({ hogarId }) {
             <button
               key={id}
               onClick={() => setFiltro(id)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${filtro === id ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+              style={filtro === id ? { backgroundColor: 'var(--color-compras)' } : undefined}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${filtro === id ? 'text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
             >
               {label}
             </button>
@@ -127,7 +128,8 @@ export default function TabCompras({ hogarId }) {
         </div>
         <button
           onClick={() => abrirForm()}
-          className="flex-shrink-0 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-medium hover:bg-gray-800 transition-colors"
+          className="flex-shrink-0 px-3 py-1.5 text-white rounded-xl text-xs font-medium hover:opacity-90 transition-opacity"
+          style={{ backgroundColor: 'var(--color-compras)' }}
         >
           + Agregar
         </button>
@@ -172,7 +174,7 @@ export default function TabCompras({ hogarId }) {
               <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">🛒 {super_}</div>
               <div className="space-y-2">
                 {grupo.map(item => (
-                  <div key={item.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center gap-3">
+                  <div key={item.id} className="bg-white rounded-2xl border border-gray-100 px-4 py-3 flex items-center gap-3 card-ios">
                     <button
                       onClick={() => handleToggle(item)}
                       className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${item.completado ? 'border-green-500 bg-green-500' : 'border-gray-300 bg-white'}`}
@@ -261,10 +263,10 @@ export default function TabCompras({ hogarId }) {
               </div>
             </div>
             <div className="flex gap-3 p-5 pt-0">
-              <button onClick={() => setMostrarForm(false)} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
+              <button onClick={() => setMostrarForm(false)} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
                 Cancelar
               </button>
-              <button onClick={handleGuardar} className="flex-1 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">
+              <button onClick={handleGuardar} className="flex-1 py-2.5 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--color-compras)' }}>
                 {itemEditando ? 'Guardar cambios' : 'Agregar'}
               </button>
             </div>

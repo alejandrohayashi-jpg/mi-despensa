@@ -4,6 +4,22 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
+:root {
+  --color-inicio: #ff3b30;
+  --color-alimentos: #34c759;
+  --color-personas: #af52de;
+  --color-vehiculos: #ff9500;
+  --color-equipos: #5ac8fa;
+  --color-compras: #34c759;
+  --color-tareas: #af52de;
+  --color-documentos: #ffcc00;
+  --color-hogar: #8e8e93;
+}
+
+.card-ios {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
 body {
   margin: 0;
   -webkit-font-smoothing: antialiased;

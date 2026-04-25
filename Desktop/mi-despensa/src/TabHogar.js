@@ -13,7 +13,7 @@ export default function TabHogar({
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
 
-  const inputCls = 'w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1';
+  const inputCls = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1';
   const labelCls = 'block text-xs font-medium text-gray-500 uppercase tracking-wide';
   const secTitle = 'text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3';
 
@@ -68,11 +68,11 @@ export default function TabHogar({
       {esAdmin && (
         <section>
           <div className={secTitle}>🏠 Hogar</div>
-          <div className="bg-white border border-gray-100 rounded-xl p-4 space-y-4">
+          <div className="bg-white border border-gray-100 rounded-2xl p-4 space-y-4 card-ios">
             <div>
               <label className={labelCls}>Nombre del hogar</label>
               <input value={nuevoNombre} onChange={e => setNuevoNombre(e.target.value)} className={inputCls} />
-              <button onClick={handleCambiarNombre} disabled={cargando} className="mt-2 py-2 px-4 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50">
+              <button onClick={handleCambiarNombre} disabled={cargando} className="mt-2 py-2 px-4 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50" style={{ backgroundColor: 'var(--color-hogar)' }}>
                 {cargando ? 'Guardando...' : 'Cambiar nombre'}
               </button>
             </div>
@@ -80,7 +80,7 @@ export default function TabHogar({
               <label className={labelCls}>Código de invitación</label>
               <div className="flex items-center gap-3 mt-1">
                 <span className="font-mono text-sm font-bold tracking-widest bg-gray-100 text-gray-800 px-3 py-2 rounded-lg flex-1 text-center">{codigo || '—'}</span>
-                <button onClick={handleRegenerarCodigo} disabled={cargando} className="py-2 px-3 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 whitespace-nowrap">🔄 Regenerar</button>
+                <button onClick={handleRegenerarCodigo} disabled={cargando} className="py-2 px-3 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 whitespace-nowrap" style={{ backgroundColor: 'var(--color-vehiculos)' }}>🔄 Regenerar</button>
               </div>
               <p className="text-xs text-gray-400 mt-2">Comparte este código con quien quieras invitar.</p>
             </div>
@@ -90,7 +90,7 @@ export default function TabHogar({
 
       <section>
         <div className={secTitle}>👥 Miembros ({miembros.length})</div>
-        <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden card-ios">
           {miembros.length === 0 ? (
             <div className="p-4 text-sm text-gray-400">Sin miembros registrados</div>
           ) : (
@@ -111,10 +111,10 @@ export default function TabHogar({
 
       <section>
         <div className={secTitle}>⚙️ Cuenta</div>
-        <div className="bg-white border border-gray-100 rounded-xl p-4">
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 card-ios">
           <label className={labelCls}>Cambiar contraseña</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" className={inputCls} />
-          <button onClick={handleCambiarPassword} disabled={cargando} className="mt-2 py-2 px-4 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50">
+          <button onClick={handleCambiarPassword} disabled={cargando} className="mt-2 py-2 px-4 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50" style={{ backgroundColor: 'var(--color-hogar)' }}>
             {cargando ? 'Guardando...' : 'Actualizar contraseña'}
           </button>
         </div>
@@ -122,7 +122,7 @@ export default function TabHogar({
 
       <button
         onClick={onVerHistorial}
-        className="w-full py-2.5 px-4 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+        className="w-full py-2.5 px-4 border border-gray-200 text-gray-600 rounded-2xl text-sm font-medium hover:bg-gray-50 transition-colors"
       >
         📋 Ver historial
       </button>
@@ -133,7 +133,7 @@ export default function TabHogar({
 
       <button
         onClick={() => supabase.auth.signOut()}
-        className="w-full py-2.5 px-4 border border-red-200 text-red-600 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors"
+        className="w-full py-2.5 px-4 border border-red-200 text-red-600 rounded-2xl text-sm font-medium hover:bg-red-50 transition-colors"
       >
         → Cerrar sesión
       </button>

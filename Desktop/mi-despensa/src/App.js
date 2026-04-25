@@ -12,6 +12,17 @@ import { diasParaVencer } from './utils';
 
 const EMOJIS = ['🏠','👶','👦','👧','👨','👩','👴','👵','🐶','🐱','🐾','🍎','🥦','🥛','🍗','🛒','⭐','❤️','🌟','🎯'];
 
+const NAV_COLORS = {
+  inicio:    '#ff3b30',
+  alimentos: '#34c759',
+  personas:  '#af52de',
+  vehiculos: '#ff9500',
+  equipos:   '#5ac8fa',
+  compras:   '#34c759',
+  tareas:    '#af52de',
+  hogar:     '#8e8e93',
+};
+
 function getEstado(vencimiento) {
   const hoy = new Date();
   const vence = new Date(vencimiento);
@@ -55,7 +66,7 @@ function ProductoItem({ producto, onEliminar, onEditar, onToggleModo, mostrarUbi
 
   return (
     <div
-      className="group flex items-center gap-3 bg-white border border-gray-100 rounded-xl px-4 py-3 mb-2 hover:border-gray-200 transition-colors"
+      className="group flex items-center gap-3 bg-white border border-gray-100 rounded-2xl px-4 py-3 mb-2 hover:border-gray-200 transition-colors card-ios"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchMove={handleTouchEnd}
@@ -86,7 +97,7 @@ function ProductoItem({ producto, onEliminar, onEditar, onToggleModo, mostrarUbi
         <button
           onClick={() => onToggleModo(producto)}
           title={modo === 'automatico' ? 'Pausar descuento automático' : 'Activar descuento automático'}
-          className={`border rounded-lg px-2 py-1 text-xs cursor-pointer transition-colors ${
+          className={`border rounded-xl px-2 py-1 text-xs cursor-pointer transition-colors ${
             modo === 'automatico'
               ? 'border-green-200 text-green-700 bg-green-50 hover:bg-green-100'
               : 'border-gray-200 text-gray-400 bg-white hover:bg-gray-50'
@@ -151,7 +162,7 @@ function ModalDestino({ hogarId, onCerrar, onGuardado }) {
             value={nombre}
             onChange={e => setNombre(e.target.value)}
             placeholder="Ej: Agustín"
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1"
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1"
           />
         </div>
         <div className="mb-6">
@@ -161,7 +172,7 @@ function ModalDestino({ hogarId, onCerrar, onGuardado }) {
               <button
                 key={e}
                 onClick={() => setEmoji(e)}
-                className={`w-9 h-9 text-lg rounded-lg transition-colors ${
+                className={`w-9 h-9 text-lg rounded-xl transition-colors ${
                   emoji === e
                     ? 'border-2 border-gray-900 bg-gray-100'
                     : 'border border-gray-200 bg-white hover:bg-gray-50'
@@ -173,10 +184,10 @@ function ModalDestino({ hogarId, onCerrar, onGuardado }) {
           </div>
         </div>
         <div className="flex gap-3">
-          <button onClick={onCerrar} className="flex-1 py-2.5 px-4 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
+          <button onClick={onCerrar} className="flex-1 py-2.5 px-4 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
             Cancelar
           </button>
-          <button onClick={handleGuardar} className="flex-1 py-2.5 px-4 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">
+          <button onClick={handleGuardar} className="flex-1 py-2.5 px-4 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--color-alimentos)' }}>
             Guardar
           </button>
         </div>
@@ -218,7 +229,7 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos, tab
     onCerrar();
   };
 
-  const inputCls = 'w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1';
+  const inputCls = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1';
   const labelCls = 'block text-xs font-medium text-gray-500 uppercase tracking-wide';
 
   return (
@@ -240,7 +251,7 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos, tab
                 <button
                   key={d.id}
                   onClick={() => setForm({ ...form, destino: d.nombre })}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${
                     form.destino === d.nombre
                       ? 'bg-gray-900 text-white border-2 border-gray-900'
                       : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
@@ -279,7 +290,7 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos, tab
                   key={op.value}
                   type="button"
                   onClick={() => setForm({ ...form, ubicacion: op.value })}
-                  className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  className={`flex-1 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${
                     form.ubicacion === op.value
                       ? 'bg-gray-900 text-white border-2 border-gray-900'
                       : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
@@ -321,13 +332,13 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos, tab
                 value={form.frecuencia_consumo}
                 onChange={handleChange}
                 placeholder="Ej: 2"
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition"
               />
               <select
                 name="unidad_consumo"
                 value={form.unidad_consumo}
                 onChange={handleChange}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition"
               >
                 <option>unidad/día</option>
                 <option>unidad/semana</option>
@@ -351,7 +362,7 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos, tab
                     key={op.value}
                     type="button"
                     onClick={() => setForm({ ...form, modo_consumo: op.value })}
-                    className={`flex-1 py-2 px-1 rounded-lg text-xs font-medium transition-colors ${
+                    className={`flex-1 py-2 px-1 rounded-xl text-xs font-medium transition-colors ${
                       form.modo_consumo === op.value
                         ? 'bg-gray-900 text-white border-2 border-gray-900'
                         : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
@@ -365,10 +376,10 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos, tab
           )}
         </div>
         <div className="flex gap-3 p-6 pt-4">
-          <button onClick={onCerrar} className="flex-1 py-2.5 px-4 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
+          <button onClick={onCerrar} className="flex-1 py-2.5 px-4 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
             Cancelar
           </button>
-          <button onClick={handleGuardar} className="flex-1 py-2.5 px-4 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">
+          <button onClick={handleGuardar} className="flex-1 py-2.5 px-4 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--color-alimentos)' }}>
             {productoEditar ? 'Guardar cambios' : 'Guardar'}
           </button>
         </div>
@@ -793,7 +804,7 @@ function App() {
     <div className="max-w-xl mx-auto bg-gray-50 min-h-screen font-sans pb-20">
       {/* Header */}
       <div className="bg-white px-5 py-4 border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-        <h1 className="text-base font-semibold text-gray-900 tracking-tight">{nombreHogar || '🏠'}</h1>
+        <h1 className="text-base font-bold text-gray-900 tracking-tight">{nombreHogar || '🏠'}</h1>
         <div className="text-xs text-gray-400 mt-0.5">MiHogar</div>
       </div>
 
@@ -810,9 +821,10 @@ function App() {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 ${
+                style={tab === t.id ? { borderColor: 'var(--color-alimentos)', color: 'var(--color-alimentos)' } : undefined}
+                className={`flex-1 py-3 text-sm font-medium transition-all border-b-2 ${
                   tab === t.id
-                    ? 'border-gray-900 text-gray-900'
+                    ? ''
                     : 'border-transparent text-gray-400 hover:text-gray-600'
                 }`}
               >
@@ -824,9 +836,10 @@ function App() {
           <div className="flex gap-2 px-4 py-3 bg-white border-b border-gray-100 overflow-x-auto items-center">
             <button
               onClick={() => setFiltroDestino('Todos')}
+              style={filtroDestino === 'Todos' ? { backgroundColor: 'var(--color-alimentos)' } : undefined}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
                 filtroDestino === 'Todos'
-                  ? 'bg-gray-900 text-white'
+                  ? 'text-white'
                   : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
               }`}
             >
@@ -836,9 +849,10 @@ function App() {
               <button
                 key={d.id}
                 onClick={() => setFiltroDestino(d.nombre)}
+                style={filtroDestino === d.nombre ? { backgroundColor: 'var(--color-alimentos)' } : undefined}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
                   filtroDestino === d.nombre
-                    ? 'bg-gray-900 text-white'
+                    ? 'text-white'
                     : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                 }`}
               >
@@ -890,8 +904,8 @@ function App() {
                   <div
                     key={m.key}
                     onClick={() => toggleFiltroEstado(m.key)}
-                    className={`rounded-xl border-2 p-3 text-center cursor-pointer transition-all ${
-                      activo ? activeCls : 'bg-white border-transparent hover:border-gray-200 hover:shadow-sm'
+                    className={`rounded-2xl border-2 p-3 text-center cursor-pointer transition-all card-ios ${
+                      activo ? activeCls : 'bg-white border-transparent hover:border-gray-200'
                     }`}
                   >
                     <div className={`text-xl font-semibold ${m.numCls}`}>{m.num}</div>
@@ -945,7 +959,8 @@ function App() {
 
             <button
               onClick={() => { setProductoEditar(null); setMostrarFormulario(true); }}
-              className="w-full py-3 mt-2 border border-dashed border-gray-300 rounded-xl text-sm text-gray-400 hover:border-gray-400 hover:text-gray-500 transition-colors"
+              className="w-full py-3 mt-2 rounded-xl text-sm font-medium text-white hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: 'var(--color-alimentos)' }}
             >
               + Agregar producto
             </button>
@@ -964,7 +979,7 @@ function App() {
                   <div className="text-center py-4 text-xs text-gray-400">Sin productos archivados</div>
                 ) : (
                   archivados.map(p => (
-                    <div key={p.id} className="bg-white rounded-xl border border-gray-200 px-4 py-3 flex items-center justify-between gap-3">
+                    <div key={p.id} className="bg-white rounded-2xl border border-gray-200 px-4 py-3 flex items-center justify-between gap-3 card-ios">
                       <div className="min-w-0">
                         <div className="text-sm font-medium text-gray-500">{p.nombre}</div>
                         <div className="text-xs text-gray-400 mt-0.5">
@@ -1079,12 +1094,19 @@ function App() {
               <button
                 key={t.id}
                 onClick={() => setTabPrincipal(t.id)}
-                className={`relative flex-shrink-0 w-[72px] flex flex-col items-center justify-center py-2.5 text-xs font-medium transition-colors ${
-                  tabPrincipal === t.id ? 'text-gray-900' : 'text-gray-400'
+                style={tabPrincipal === t.id ? { color: NAV_COLORS[t.id] } : undefined}
+                className={`relative flex-shrink-0 w-[72px] flex flex-col items-center justify-center py-2.5 pb-3 text-xs font-medium transition-all ${
+                  tabPrincipal === t.id ? '' : 'text-gray-400'
                 }`}
               >
                 <span className="text-xl mb-0.5">{t.emoji}</span>
                 {t.label}
+                {tabPrincipal === t.id && (
+                  <span
+                    className="absolute bottom-1 w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: NAV_COLORS[t.id] }}
+                  />
+                )}
                 {t.id === 'hogar' && esAdmin && solicitudes.length > 0 && (
                   <span className="absolute top-1.5 right-[calc(50%-14px)] bg-red-600 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center font-bold leading-none">
                     {solicitudes.length}

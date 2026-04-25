@@ -11,10 +11,10 @@ export default function Auth() {
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState('');
 
-  const inputCls = 'w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1';
+  const inputCls = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1';
   const labelCls = 'block text-xs font-medium text-gray-500 uppercase tracking-wide';
-  const btnPrimary = 'w-full py-2.5 px-4 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2';
-  const btnSecondary = 'w-full py-2.5 px-4 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors mt-2';
+  const btnPrimary = 'w-full py-2.5 px-4 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed mt-2';
+  const btnSecondary = 'w-full py-2.5 px-4 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors mt-2';
   const btnGhost = 'w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors mt-1';
 
   const handleLogin = async () => {
@@ -146,8 +146,8 @@ export default function Auth() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 font-sans">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="text-4xl mb-3">🏠</div>
-          <h1 className="text-xl font-semibold text-gray-900 tracking-tight">MiHogar</h1>
+          <div className="text-4xl mb-3 w-16 h-16 flex items-center justify-center rounded-2xl mx-auto" style={{ backgroundColor: 'var(--color-alimentos)', opacity: 0.9 }}>🏠</div>
+          <h1 className="text-xl font-bold text-gray-900 tracking-tight mt-3">MiHogar</h1>
           <p className="text-sm text-gray-400 mt-1">Gestión del hogar</p>
         </div>
 
@@ -166,7 +166,7 @@ export default function Auth() {
                 </div>
               </div>
               {mensaje && <p className="text-xs text-red-600 mt-3">{mensaje}</p>}
-              <button onClick={handleLogin} disabled={cargando} className={btnPrimary}>
+              <button onClick={handleLogin} disabled={cargando} className={btnPrimary} style={{ backgroundColor: 'var(--color-alimentos)' }}>
                 {cargando ? 'Ingresando...' : 'Ingresar'}
               </button>
               {divisor}
@@ -179,7 +179,7 @@ export default function Auth() {
             <>
               <h2 className="text-sm font-semibold text-gray-900 mb-1">Crear cuenta</h2>
               <p className="text-xs text-gray-400 mb-5">¿Cómo quieres unirte?</p>
-              <button onClick={() => setFlujo('crear')} className={`${btnPrimary} mt-0`}>
+              <button onClick={() => setFlujo('crear')} className={`${btnPrimary} mt-0`} style={{ backgroundColor: 'var(--color-alimentos)' }}>
                 🏠 Crear un hogar nuevo
               </button>
               <button onClick={() => setFlujo('unirse')} className={btnSecondary}>
@@ -225,7 +225,7 @@ export default function Auth() {
               {mensaje && (
                 <p className={`text-xs mt-3 ${mensaje.startsWith('✅') ? 'text-green-600' : 'text-red-600'}`}>{mensaje}</p>
               )}
-              <button onClick={handleRegistro} disabled={cargando} className={btnPrimary}>
+              <button onClick={handleRegistro} disabled={cargando} className={btnPrimary} style={{ backgroundColor: 'var(--color-alimentos)' }}>
                 {cargando ? 'Enviando...' : flujo === 'crear' ? 'Crear hogar' : 'Enviar solicitud'}
               </button>
               <button onClick={() => { setFlujo('inicio'); setMensaje(''); }} className={btnGhost}>← Volver</button>

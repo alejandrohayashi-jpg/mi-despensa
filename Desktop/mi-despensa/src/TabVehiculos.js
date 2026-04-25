@@ -63,7 +63,7 @@ export default function TabVehiculos({ hogarId, userId, esAdmin }) {
   const [itemEditando, setItemEditando] = useState(null);
   const [errorForm, setErrorForm] = useState('');
 
-  const inputCls = 'w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1';
+  const inputCls = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1';
   const labelCls = 'block text-xs font-medium text-gray-500 uppercase tracking-wide';
 
   useEffect(() => {
@@ -302,7 +302,8 @@ export default function TabVehiculos({ hogarId, userId, esAdmin }) {
         <div className="flex bg-white border-b border-gray-100">
           {SUB_TABS.map(t => (
             <button key={t.id} onClick={() => { setSubTab(t.id); cerrarForm(); }}
-              className={`flex-1 px-4 py-3 text-xs font-medium transition-colors border-b-2 whitespace-nowrap ${subTab === t.id ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+              style={subTab === t.id ? { borderColor: 'var(--color-vehiculos)', color: 'var(--color-vehiculos)' } : undefined}
+              className={`flex-1 px-4 py-3 text-xs font-medium transition-all border-b-2 whitespace-nowrap ${subTab === t.id ? '' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
               {t.label}
             </button>
           ))}
@@ -316,7 +317,7 @@ export default function TabVehiculos({ hogarId, userId, esAdmin }) {
                 <div className="text-center py-8 text-sm text-gray-400">Sin registros aún</div>
               )}
               {itemsFiltrados.map(item => (
-                <div key={item.id} className="bg-white border border-gray-100 rounded-xl px-4 py-3 mb-2">
+                <div key={item.id} className="bg-white border border-gray-100 rounded-2xl px-4 py-3 mb-2 card-ios">
                   {renderItem(item)}
                 </div>
               ))}
@@ -328,8 +329,8 @@ export default function TabVehiculos({ hogarId, userId, esAdmin }) {
                   {renderForm()}
                   {errorForm && <p className="text-xs text-red-600 mt-3 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{errorForm}</p>}
                   <div className="flex gap-2 mt-4">
-                    <button onClick={cerrarForm} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Cancelar</button>
-                    <button onClick={handleGuardarItem} className="flex-1 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">{itemEditando ? 'Guardar cambios' : 'Guardar'}</button>
+                    <button onClick={cerrarForm} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">Cancelar</button>
+                    <button onClick={handleGuardarItem} className="flex-1 py-2.5 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--color-vehiculos)' }}>{itemEditando ? 'Guardar cambios' : 'Guardar'}</button>
                   </div>
                 </div>
               ) : (
@@ -347,8 +348,8 @@ export default function TabVehiculos({ hogarId, userId, esAdmin }) {
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Editar vehículo</div>
               <FormCamposVehiculo form={formVehiculo} setForm={setFormVehiculo} inputCls={inputCls} labelCls={labelCls} />
               <div className="flex gap-2 mt-4">
-                <button onClick={cerrarFormVehiculo} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Cancelar</button>
-                <button onClick={handleGuardarVehiculo} className="flex-1 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">Guardar</button>
+                <button onClick={cerrarFormVehiculo} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">Cancelar</button>
+                <button onClick={handleGuardarVehiculo} className="flex-1 py-2.5 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--color-vehiculos)' }}>Guardar</button>
               </div>
             </div>
           </div>
@@ -364,9 +365,9 @@ export default function TabVehiculos({ hogarId, userId, esAdmin }) {
       ) : (
         <>
           {vehiculos.map(v => (
-            <div key={v.id} className="group flex items-center bg-white border border-gray-100 rounded-xl px-4 py-3 mb-2 hover:border-gray-200 transition-colors">
+            <div key={v.id} className="group flex items-center bg-white border border-gray-100 rounded-2xl px-4 py-3 mb-2 hover:border-gray-200 transition-colors card-ios">
               <button onClick={() => { setVehiculoActivo(v); setSubTab('mantenciones'); setItems([]); cerrarForm(); }} className="flex items-center gap-3 flex-1 text-left min-w-0">
-                <span className="text-2xl shrink-0">{v.emoji || EMOJI_VEHICULO[v.tipo] || '🚗'}</span>
+                <span className="text-2xl shrink-0 w-10 h-10 flex items-center justify-center rounded-xl" style={{ backgroundColor: '#ff950018' }}>{v.emoji || EMOJI_VEHICULO[v.tipo] || '🚗'}</span>
                 <div className="min-w-0">
                   <div className="text-sm font-medium text-gray-900">{v.nombre}</div>
                   <div className="text-xs text-gray-400 mt-0.5">
@@ -391,12 +392,12 @@ export default function TabVehiculos({ hogarId, userId, esAdmin }) {
               </div>
               <FormCamposVehiculo form={formVehiculo} setForm={setFormVehiculo} inputCls={inputCls} labelCls={labelCls} />
               <div className="flex gap-2 mt-4">
-                <button onClick={cerrarFormVehiculo} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Cancelar</button>
-                <button onClick={handleGuardarVehiculo} className="flex-1 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">Guardar</button>
+                <button onClick={cerrarFormVehiculo} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">Cancelar</button>
+                <button onClick={handleGuardarVehiculo} className="flex-1 py-2.5 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--color-vehiculos)' }}>Guardar</button>
               </div>
             </div>
           ) : (
-            <button onClick={() => abrirFormVehiculo()} className="w-full py-3 mt-1 border border-dashed border-gray-300 rounded-xl text-sm text-gray-400 hover:border-gray-400 hover:text-gray-500 transition-colors">
+            <button onClick={() => abrirFormVehiculo()} className="w-full py-3 mt-1 rounded-xl text-sm font-medium text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--color-vehiculos)' }}>
               + Agregar vehículo
             </button>
           )}
