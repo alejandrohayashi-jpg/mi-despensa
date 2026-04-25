@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   // 1. Traer todos los productos en modo automático con consumo definido
   const { data: productos, error } = await supabase
     .from('productos')
-    .select('id, nombre, cantidad, frecuencia_consumo, unidad_consumo, hogar_id')
+    .select('id, nombre, cantidad, vencimiento, unidad, categoria, frecuencia_consumo, unidad_consumo, hogar_id')
     .eq('modo_consumo', 'automatico')
     .gt('frecuencia_consumo', 0);
 
@@ -34,6 +34,7 @@ Deno.serve(async (req) => {
   }
 
   // 2. Calcular descuentos
+  const hoy = new Date().toISOString().split('T')[0];
   const actualizaciones = productos.map((p) => {
     const esSemanal = p.unidad_consumo?.includes('semana');
     const consumoDiario = esSemanal ? p.frecuencia_consumo / 7 : p.frecuencia_consumo;
@@ -41,14 +42,19 @@ Deno.serve(async (req) => {
     const nuevaCantidad = parseFloat((p.cantidad - consumoDiario).toFixed(2));
 
     if (nuevaCantidad <= 0) {
-      return { id: p.id, nombre: p.nombre, hogar_id: p.hogar_id, cantidadAntes, campos: { cantidad: 0, modo_consumo: 'pausado' } };
+      const vencido = p.vencimiento && p.vencimiento < hoy;
+      return {
+        id: p.id, nombre: p.nombre, unidad: p.unidad, categoria: p.categoria,
+        hogar_id: p.hogar_id, cantidadAntes,
+        campos: { cantidad: 0, modo_consumo: 'pausado', ...(vencido && { archivado: true }) },
+      };
     }
-    return { id: p.id, nombre: p.nombre, hogar_id: p.hogar_id, cantidadAntes, campos: { cantidad: nuevaCantidad } };
+    return { id: p.id, nombre: p.nombre, unidad: p.unidad, categoria: p.categoria, hogar_id: p.hogar_id, cantidadAntes, campos: { cantidad: nuevaCantidad } };
   });
 
   // 3. Ejecutar updates e inserts en historial en paralelo
   const resultados = await Promise.all(
-    actualizaciones.map(async ({ id, nombre, hogar_id, cantidadAntes, campos }) => {
+    actualizaciones.map(async ({ id, nombre, unidad, categoria, hogar_id, cantidadAntes, campos }) => {
       const updateResult = await supabase.from('productos').update(campos).eq('id', id);
       if (!updateResult.error) {
         await supabase.from('historial').insert([{
@@ -60,6 +66,28 @@ Deno.serve(async (req) => {
           cantidad_despues: campos.cantidad,
           descripcion: campos.modo_consumo === 'pausado' ? 'Stock agotado, pausado automáticamente' : 'Descuento automático diario',
         }]);
+
+        // Auto-agregar a lista de compras cuando se agota
+        if (campos.modo_consumo === 'pausado') {
+          const { data: enLista } = await supabase
+            .from('lista_compras')
+            .select('id')
+            .eq('hogar_id', hogar_id)
+            .eq('nombre', nombre)
+            .eq('completado', false)
+            .maybeSingle();
+          if (!enLista) {
+            await supabase.from('lista_compras').insert({
+              hogar_id,
+              nombre,
+              cantidad: 1,
+              unidad: unidad || 'un.',
+              categoria: categoria || null,
+              completado: false,
+              notas: 'Agregado automáticamente al agotarse',
+            });
+          }
+        }
       }
       return updateResult;
     })

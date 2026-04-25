@@ -486,6 +486,8 @@ function App() {
   const [categoriasColapsadas, setCategoriasColapsadas] = useState({});
   const [filtroEstado, setFiltroEstado] = useState(null);
   const [busqueda, setBusqueda] = useState('');
+  const [archivados, setArchivados] = useState([]);
+  const [mostrarArchivados, setMostrarArchivados] = useState(false);
 
   const toggleCategoria = (cat) =>
     setCategoriasColapsadas(prev => ({ ...prev, [cat]: prev[cat] === false }));
@@ -533,7 +535,7 @@ function App() {
 
   const cargarProductos = async (hid) => {
     setCargando(true);
-    const { data } = await supabase.from('productos').select('*').eq('hogar_id', hid || hogarId);
+    const { data } = await supabase.from('productos').select('*').eq('hogar_id', hid || hogarId).eq('archivado', false);
     setProductos(data || []);
     setCargando(false);
   };
@@ -616,6 +618,24 @@ function App() {
     if (productoEditar) {
       await supabase.from('productos').update(producto).eq('id', producto.id);
       await registrarHistorial(producto, 'edicion_manual', productoEditar.cantidad, producto.cantidad, 'Edición manual');
+      if (Number(producto.cantidad) === 0 && productoEditar.cantidad > 0) {
+        const { data: enLista } = await supabase
+          .from('lista_compras').select('id')
+          .eq('hogar_id', hogarId).eq('nombre', producto.nombre).eq('completado', false)
+          .maybeSingle();
+        if (!enLista) {
+          await supabase.from('lista_compras').insert({
+            hogar_id: hogarId,
+            nombre: producto.nombre,
+            cantidad: 1,
+            unidad: producto.unidad,
+            categoria: producto.categoria,
+            completado: false,
+            created_by: session.user.id,
+            notas: 'Agregado automáticamente al agotarse',
+          });
+        }
+      }
     } else {
       const { data: nuevo } = await supabase
         .from('productos')
@@ -628,6 +648,22 @@ function App() {
       );
     }
     cargarProductos();
+  };
+
+  const cargarArchivados = async () => {
+    const { data } = await supabase.from('productos').select('*').eq('hogar_id', hogarId).eq('archivado', true).order('nombre');
+    setArchivados(data || []);
+  };
+
+  const handleRestaurar = async (producto) => {
+    await supabase.from('productos').update({ archivado: false, cantidad: 1, modo_consumo: 'manual' }).eq('id', producto.id);
+    cargarArchivados();
+    cargarProductos();
+  };
+
+  const handleEliminarArchivado = async (id) => {
+    await supabase.from('productos').delete().eq('id', id);
+    cargarArchivados();
   };
 
   const handleEliminar = async (id) => {
@@ -913,6 +949,47 @@ function App() {
             >
               + Agregar producto
             </button>
+
+            {esAdmin && (
+              <button
+                onClick={() => { setMostrarArchivados(v => !v); if (!mostrarArchivados) cargarArchivados(); }}
+                className="w-full py-2 mt-3 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                {mostrarArchivados ? '▲ Ocultar archivados' : '▾ Ver archivados'}
+              </button>
+            )}
+            {esAdmin && mostrarArchivados && (
+              <div className="mt-2 space-y-2">
+                {archivados.length === 0 ? (
+                  <div className="text-center py-4 text-xs text-gray-400">Sin productos archivados</div>
+                ) : (
+                  archivados.map(p => (
+                    <div key={p.id} className="bg-white rounded-xl border border-gray-200 px-4 py-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-gray-500">{p.nombre}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">
+                          {[p.categoria, p.destino].filter(Boolean).join(' · ')}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => handleRestaurar(p)}
+                          className="text-xs px-2 py-1 rounded-lg border border-green-200 text-green-600 hover:bg-green-50 transition-colors"
+                        >
+                          Restaurar
+                        </button>
+                        <button
+                          onClick={() => handleEliminarArchivado(p.id)}
+                          className="text-xs px-2 py-1 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </>
       )}
