@@ -7,15 +7,15 @@ import {
 
 const LABELS_MANT_VEH = { mantencion: 'Mantención', neumaticos: 'Neumáticos', otro: 'Otro' };
 
-const TARJETA_COLORS = {
-  alertas:      '#ff3b30',
-  citas:        '#af52de',
-  cumpleanos:   '#af52de',
-  vehiculos:    '#ff9500',
-  mantenciones: '#5ac8fa',
-  compras:      '#34c759',
-  tareas:       '#af52de',
-  documentos:   '#ffcc00',
+const TARJETA_STYLES = {
+  alertas:      { bg: '#fff0f0', color: '#ff3b30' },
+  citas:        { bg: '#f0f8ff', color: '#007aff' },
+  cumpleanos:   { bg: '#f8f0ff', color: '#af52de' },
+  vehiculos:    { bg: '#fff5e6', color: '#ff9500' },
+  mantenciones: { bg: '#e8faf5', color: '#30b57a' },
+  compras:      { bg: '#f0fff4', color: '#34c759' },
+  tareas:       { bg: '#f5f0ff', color: '#8b5cf6' },
+  documentos:   { bg: '#fffbeb', color: '#f59e0b' },
 };
 const TIPOS_CITA = { medica: 'Médica', dental: 'Dental', veterinaria: 'Veterinaria', otro: 'Otro' };
 const PRIO_LABEL = { alta: 'Alta', normal: 'Normal', baja: 'Baja' };
@@ -587,32 +587,26 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
         <div className="grid grid-cols-4 gap-2">
           {tarjetas.map(t => {
             const isActive = tarjetaActiva === t.id;
-            const color = TARJETA_COLORS[t.id] || '#8e8e93';
-            const isZero = t.count === 0;
-            const cardStyle = isZero
-              ? {}
-              : {
-                  backgroundColor: color + '15',
-                  borderColor: isActive ? color : color + '35',
-                };
-            const textStyle = isZero ? {} : { color };
+            const styles = TARJETA_STYLES[t.id] || { bg: '#f5f5f5', color: '#8e8e93' };
             return (
               <button
                 key={t.id}
                 onClick={() => setTarjetaActiva(isActive ? null : t.id)}
-                style={cardStyle}
-                className={`rounded-2xl border-2 py-3 px-1 flex flex-col items-center justify-center text-center gap-0.5 transition-all active:scale-95 card-ios ${
-                  isZero ? 'bg-white border-gray-100' : ''
-                }`}
+                style={{
+                  backgroundColor: styles.bg,
+                  borderColor: isActive ? styles.color : 'transparent',
+                  borderRadius: 16,
+                }}
+                className="border-2 py-3 px-1 flex flex-col items-center justify-center text-center gap-0.5 transition-all active:scale-95 card-ios"
               >
                 <span className="text-xl leading-none">{t.icon}</span>
                 <span
-                  className={`text-lg font-bold leading-tight ${isZero ? 'text-gray-300' : ''}`}
-                  style={textStyle}
+                  className="text-lg font-bold leading-tight"
+                  style={{ color: styles.color }}
                 >{t.count}</span>
                 <span
-                  className={`text-[10px] font-medium leading-tight ${isZero ? 'text-gray-300' : ''}`}
-                  style={textStyle}
+                  className="text-[10px] font-medium leading-tight"
+                  style={{ color: styles.color }}
                 >{t.label}</span>
               </button>
             );
@@ -621,8 +615,8 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
 
         {/* Panel detalle expandible */}
         {tarjetaActiva && (
-          <div className="mt-3 bg-white rounded-2xl border-2 overflow-hidden card-ios" style={{ borderColor: (TARJETA_COLORS[tarjetaActiva] || '#e5e7eb') + '50' }}>
-            <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between" style={{ backgroundColor: (TARJETA_COLORS[tarjetaActiva] || '#f9fafb') + '12' }}>
+          <div className="mt-3 bg-white rounded-2xl border-2 overflow-hidden card-ios" style={{ borderColor: ((TARJETA_STYLES[tarjetaActiva] || {}).color || '#e5e7eb') + '50' }}>
+            <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between" style={{ backgroundColor: (TARJETA_STYLES[tarjetaActiva] || {}).bg || '#f9fafb' }}>
               <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">
                 {tarjetaActivaInfo?.icon} {tarjetaActivaInfo?.label}
               </span>
