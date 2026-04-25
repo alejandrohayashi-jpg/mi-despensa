@@ -996,17 +996,17 @@ function App() {
 
       {/* Tab: Personas */}
       {tabPrincipal === 'personas' && (
-        <TabPersonas hogarId={hogarId} userId={session.user.id} />
+        <TabPersonas hogarId={hogarId} userId={session.user.id} esAdmin={esAdmin} />
       )}
 
       {/* Tab: Vehículos */}
       {tabPrincipal === 'vehiculos' && (
-        <TabVehiculos hogarId={hogarId} userId={session.user.id} />
+        <TabVehiculos hogarId={hogarId} userId={session.user.id} esAdmin={esAdmin} />
       )}
 
       {/* Tab: Equipos */}
       {tabPrincipal === 'equipos' && (
-        <TabEquipos hogarId={hogarId} userId={session.user.id} />
+        <TabEquipos hogarId={hogarId} userId={session.user.id} esAdmin={esAdmin} />
       )}
 
       {/* Tab: Compras */}

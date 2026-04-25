@@ -48,7 +48,7 @@ function FormCamposVehiculo({ form, setForm, inputCls, labelCls }) {
   );
 }
 
-export default function TabVehiculos({ hogarId, userId }) {
+export default function TabVehiculos({ hogarId, userId, esAdmin }) {
   const [vehiculos, setVehiculos] = useState([]);
   const [vehiculoActivo, setVehiculoActivo] = useState(null);
   const [subTab, setSubTab] = useState('mantenciones');
@@ -184,6 +184,14 @@ export default function TabVehiculos({ hogarId, userId }) {
     setFormData({});
     setItemEditando(null);
     setErrorForm('');
+  };
+
+  const handleEliminarVehiculo = async (vehiculo) => {
+    if (!window.confirm(`¿Eliminar ${vehiculo.nombre}? Esto eliminará también todos sus registros de mantención y documentos.`)) return;
+    const { error } = await supabase.from('vehiculos').delete().eq('id', vehiculo.id);
+    if (error) { alert('Error al eliminar: ' + error.message); return; }
+    if (vehiculoActivo?.id === vehiculo.id) setVehiculoActivo(null);
+    cargarVehiculos();
   };
 
   const itemsFiltrados = items.filter(i =>
@@ -356,7 +364,7 @@ export default function TabVehiculos({ hogarId, userId }) {
       ) : (
         <>
           {vehiculos.map(v => (
-            <div key={v.id} className="flex items-center bg-white border border-gray-100 rounded-xl px-4 py-3 mb-2 hover:border-gray-200 transition-colors">
+            <div key={v.id} className="group flex items-center bg-white border border-gray-100 rounded-xl px-4 py-3 mb-2 hover:border-gray-200 transition-colors">
               <button onClick={() => { setVehiculoActivo(v); setSubTab('mantenciones'); setItems([]); cerrarForm(); }} className="flex items-center gap-3 flex-1 text-left min-w-0">
                 <span className="text-2xl shrink-0">{v.emoji || EMOJI_VEHICULO[v.tipo] || '🚗'}</span>
                 <div className="min-w-0">
@@ -367,6 +375,12 @@ export default function TabVehiculos({ hogarId, userId }) {
                 </div>
               </button>
               <button onClick={() => abrirFormVehiculo(v)} className="text-gray-300 hover:text-gray-500 text-sm p-1 transition-colors ml-2 shrink-0">✏️</button>
+              {esAdmin && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleEliminarVehiculo(v); }}
+                  className="opacity-0 group-hover:opacity-100 text-base p-0.5 text-gray-300 hover:text-red-400 transition-opacity duration-150 ml-1 shrink-0"
+                >✕</button>
+              )}
               <span className="text-gray-300 text-base ml-1 shrink-0">›</span>
             </div>
           ))}

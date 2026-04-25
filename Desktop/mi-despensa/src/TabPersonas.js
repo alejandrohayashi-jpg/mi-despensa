@@ -8,7 +8,7 @@ const CAMPOS_FECHA = ['fecha', 'fecha_aplicacion', 'proxima_dosis', 'fecha_fin',
 
 const FORM_PERSONA_VACIO = { nombre: '', emoji: '👦', tipo: 'humano', fecha_nac: '' };
 
-export default function TabPersonas({ hogarId, userId }) {
+export default function TabPersonas({ hogarId, userId, esAdmin }) {
   const [personas, setPersonas] = useState([]);
   const [personaActiva, setPersonaActiva] = useState(null);
   const [subTab, setSubTab] = useState('citas');
@@ -158,6 +158,14 @@ export default function TabPersonas({ hogarId, userId }) {
     setFormData({});
     setItemEditando(null);
     setErrorForm('');
+  };
+
+  const handleEliminarPersona = async (persona) => {
+    if (!window.confirm(`¿Eliminar a ${persona.nombre}? Esto eliminará también todas sus citas, vacunas, medicamentos y documentos.`)) return;
+    const { error } = await supabase.from('personas').delete().eq('id', persona.id);
+    if (error) { alert('Error al eliminar: ' + error.message); return; }
+    if (personaActiva?.id === persona.id) setPersonaActiva(null);
+    cargarPersonas();
   };
 
   const renderForm = () => {
@@ -394,7 +402,7 @@ export default function TabPersonas({ hogarId, userId }) {
           {personas.map(p => {
             const edad = calcularEdad(p.fecha_nac, p.tipo);
             return (
-              <div key={p.id} className="flex items-center bg-white border border-gray-100 rounded-xl px-4 py-3 mb-2 hover:border-gray-200 transition-colors">
+              <div key={p.id} className="group flex items-center bg-white border border-gray-100 rounded-xl px-4 py-3 mb-2 hover:border-gray-200 transition-colors">
                 <button
                   onClick={() => { setPersonaActiva(p); setSubTab('citas'); setItems([]); cerrarForm(); }}
                   className="flex items-center gap-3 flex-1 text-left min-w-0"
@@ -408,6 +416,12 @@ export default function TabPersonas({ hogarId, userId }) {
                   </div>
                 </button>
                 <button onClick={() => abrirFormPersona(p)} className="text-gray-300 hover:text-gray-500 text-sm p-1 transition-colors ml-2 shrink-0">✏️</button>
+                {esAdmin && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleEliminarPersona(p); }}
+                    className="opacity-0 group-hover:opacity-100 text-base p-0.5 text-gray-300 hover:text-red-400 transition-opacity duration-150 ml-1 shrink-0"
+                  >✕</button>
+                )}
                 <span className="text-gray-300 text-base ml-1 shrink-0">›</span>
               </div>
             );

@@ -32,7 +32,7 @@ const TIPOS_REGISTRO = {
 
 const FORM_EQUIPO_VACIO = { nombre: '', tipo: 'otro', marca: '', modelo: '', numero_serie: '', anio_compra: '', garantia_hasta: '', emoji: '🔧', notas: '' };
 
-export default function TabEquipos({ hogarId, userId }) {
+export default function TabEquipos({ hogarId, userId, esAdmin }) {
   const [equipos, setEquipos] = useState([]);
   const [proximaMap, setProximaMap] = useState({});
   const [equipoActivo, setEquipoActivo] = useState(null);
@@ -180,6 +180,14 @@ export default function TabEquipos({ hogarId, userId }) {
     setErrorForm('');
   };
 
+  const handleEliminarEquipo = async (equipo) => {
+    if (!window.confirm(`¿Eliminar ${equipo.nombre}? Esto eliminará también todo su historial de mantenciones.`)) return;
+    const { error } = await supabase.from('equipos').delete().eq('id', equipo.id);
+    if (error) { alert('Error al eliminar: ' + error.message); return; }
+    if (equipoActivo?.id === equipo.id) setEquipoActivo(null);
+    cargarEquipos();
+  };
+
   const renderForm = () => (
     <div className="space-y-3">
       <div>
@@ -306,7 +314,7 @@ export default function TabEquipos({ hogarId, userId }) {
             const proxima = proximaMap[eq.id];
             const sem = proxima ? semaforoDias(proxima) : null;
             return (
-              <div key={eq.id} className="flex items-center bg-white border border-gray-100 rounded-xl px-4 py-3 mb-2 hover:border-gray-200 transition-colors">
+              <div key={eq.id} className="group flex items-center bg-white border border-gray-100 rounded-xl px-4 py-3 mb-2 hover:border-gray-200 transition-colors">
                 <button onClick={() => { setEquipoActivo(eq); setItems([]); cerrarForm(); }} className="flex items-center gap-3 flex-1 text-left min-w-0">
                   <span className="text-2xl shrink-0">{eq.emoji || EMOJI_EQUIPO[eq.tipo] || '🔧'}</span>
                   <div className="min-w-0">
@@ -318,6 +326,12 @@ export default function TabEquipos({ hogarId, userId }) {
                   </div>
                 </button>
                 <button onClick={() => abrirFormEquipo(eq)} className="text-gray-300 hover:text-gray-500 text-sm p-1 transition-colors ml-2 shrink-0">✏️</button>
+                {esAdmin && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleEliminarEquipo(eq); }}
+                    className="opacity-0 group-hover:opacity-100 text-base p-0.5 text-gray-300 hover:text-red-400 transition-opacity duration-150 ml-1 shrink-0"
+                  >✕</button>
+                )}
                 <span className="text-gray-300 text-base ml-1 shrink-0">›</span>
               </div>
             );
