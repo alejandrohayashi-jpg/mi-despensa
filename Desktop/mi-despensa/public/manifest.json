@@ -1,6 +1,7 @@
 {
-  "short_name": "MiHogar",
   "name": "MiHogar",
+  "short_name": "MiHogar",
+  "description": "Gestiona tu hogar: alimentos, personas, vehículos, equipos y más.",
   "icons": [
     {
       "src": "favicon.ico",
@@ -10,16 +11,19 @@
     {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
-  "theme_color": "#000000",
+  "orientation": "portrait",
+  "theme_color": "#34c759",
   "background_color": "#ffffff"
 }
