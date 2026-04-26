@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabase';
 import Auth from './Auth';
 import BarcodeScanner from './BarcodeScanner';
+import GeminiScanner from './GeminiScanner';
 import TabInicio from './TabInicio';
 import TabPersonas from './TabPersonas';
 import TabVehiculos from './TabVehiculos';
@@ -277,7 +278,7 @@ function ModalGestionarDestinos({ hogarId, destinos, productos, onCerrar, onActu
   );
 }
 
-function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos, tab }) {
+function FormularioProducto({ onGuardar, onGuardarMultiple, onCerrar, productoEditar, destinos, tab }) {
   const [form, setForm] = useState(
     productoEditar
       ? {
@@ -298,6 +299,7 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos, tab
   const [escaneando, setEscaneando] = useState(false);
   const [buscandoCodigo, setBuscandoCodigo] = useState(false);
   const [mensajeEscaneo, setMensajeEscaneo] = useState('');
+  const [geminiAbierto, setGeminiAbierto] = useState(false);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -361,15 +363,26 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos, tab
           <button onClick={onCerrar} className="text-gray-400 hover:text-gray-600 text-xl leading-none transition-colors">✕</button>
         </div>
         <div className="px-6 pb-2 space-y-4">
-          <button
-            type="button"
-            onClick={() => { setMensajeEscaneo(''); setEscaneando(true); }}
-            disabled={buscandoCodigo}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ backgroundColor: 'var(--color-alimentos)' }}
-          >
-            {buscandoCodigo ? '🔍 Buscando producto...' : '📷 Escanear código de barras'}
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => { setMensajeEscaneo(''); setEscaneando(true); }}
+              disabled={buscandoCodigo}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ backgroundColor: 'var(--color-alimentos)' }}
+            >
+              {buscandoCodigo ? '🔍 Buscando...' : '📷 Código de barras'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setGeminiAbierto(true)}
+              disabled={buscandoCodigo}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ backgroundColor: '#8b5cf6' }}
+            >
+              🤖 Escanear con IA
+            </button>
+          </div>
           {mensajeEscaneo && (
             <p className={`text-xs mt-1 ${mensajeEscaneo.startsWith('✅') ? 'text-green-600' : 'text-amber-600'}`}>
               {mensajeEscaneo}
@@ -542,6 +555,31 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos, tab
         <BarcodeScanner
           onResult={handleScanResult}
           onCerrar={() => setEscaneando(false)}
+        />
+      )}
+      {geminiAbierto && (
+        <GeminiScanner
+          destinos={destinos}
+          tab={tab}
+          onConfirmar={(lista) => {
+            setGeminiAbierto(false);
+            if (lista.length === 1) {
+              setForm(prev => ({
+                ...prev,
+                nombre: lista[0].nombre,
+                cantidad: String(lista[0].cantidad),
+                unidad: lista[0].unidad,
+                categoria: lista[0].categoria,
+                vencimiento: lista[0].vencimiento,
+                destino: lista[0].destino,
+                ubicacion: lista[0].ubicacion,
+              }));
+            } else {
+              onGuardarMultiple(lista);
+              onCerrar();
+            }
+          }}
+          onCerrar={() => setGeminiAbierto(false)}
         />
       )}
     </div>
@@ -816,6 +854,21 @@ function App() {
       await registrarHistorial(
         nuevo || { id: null, nombre: producto.nombre },
         'agregado', null, producto.cantidad, 'Producto agregado',
+      );
+    }
+    cargarProductos();
+  };
+
+  const handleGuardarMultiple = async (lista) => {
+    for (const producto of lista) {
+      const { data: nuevo } = await supabase
+        .from('productos')
+        .insert([{ ...producto, hogar_id: hogarId }])
+        .select()
+        .single();
+      await registrarHistorial(
+        nuevo || { id: null, nombre: producto.nombre },
+        'agregado', null, producto.cantidad, 'Agregado por IA',
       );
     }
     cargarProductos();
@@ -1225,6 +1278,7 @@ function App() {
       {mostrarFormulario && (
         <FormularioProducto
           onGuardar={handleGuardar}
+          onGuardarMultiple={handleGuardarMultiple}
           onCerrar={handleCerrar}
           productoEditar={productoEditar}
           destinos={destinos}
