@@ -1095,12 +1095,12 @@ function App() {
                 key={t.id}
                 onClick={() => setTabPrincipal(t.id)}
                 style={tabPrincipal === t.id ? { color: NAV_COLORS[t.id] } : undefined}
-                className={`relative flex-shrink-0 w-[72px] flex flex-col items-center justify-center py-2.5 pb-3 text-xs font-medium transition-all ${
+                className={`relative flex-1 min-w-0 flex flex-col items-center justify-center py-2 pb-3 font-medium transition-all ${
                   tabPrincipal === t.id ? '' : 'text-gray-400'
                 }`}
               >
-                <span className="text-xl mb-0.5">{t.emoji}</span>
-                {t.label}
+                <span className="text-[20px] leading-none mb-0.5">{t.emoji}</span>
+                <span style={{ fontSize: '9px' }}>{t.label}</span>
                 {tabPrincipal === t.id && (
                   <span
                     className="absolute bottom-1 w-1.5 h-1.5 rounded-full"

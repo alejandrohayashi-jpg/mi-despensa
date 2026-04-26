@@ -318,7 +318,7 @@ export default function TabInicio({ hogarId, productos, userId, onNavegar }) {
     { id: 'cumpleanos',   icon: '🎂', label: 'Cumpleaños',   tab: 'personas',  count: cumpleanos.length,     minDias: minDiasCumpl  },
     { id: 'vehiculos',    icon: '🚗', label: 'Vehículos',    tab: 'vehiculos', count: docsVehiculos.length,  minDias: minDiasVeh    },
     { id: 'mantenciones', icon: '🔧', label: 'Mantenciones', tab: 'equipos',   count: mantPendientes.length, minDias: minDiasMant   },
-    { id: 'compras',      icon: '🛒', label: 'Alimentos & Compras', tab: 'compras', count: comprasPendientes, minDias: null },
+    { id: 'compras',      icon: '🛒', label: 'Compras',      tab: 'compras', count: comprasPendientes, minDias: null },
     { id: 'tareas',       icon: '✅', label: 'Tareas',       tab: 'tareas',    count: tareasUrgentes.length, minDias: minDiasTareas },
     { id: 'documentos',   icon: '📄', label: 'Documentos',   tab: 'personas',  count: documentos.length,     minDias: minDiasDocs   },
   ];
