@@ -317,7 +317,7 @@ export default function TabVehiculos({ hogarId, userId, esAdmin }) {
                 <div className="text-center py-8 text-sm text-gray-400">Sin registros aún</div>
               )}
               {itemsFiltrados.map(item => (
-                <div key={item.id} className="bg-white border border-gray-100 rounded-2xl px-4 py-3 mb-2 card-ios">
+                <div key={item.id} className="bg-white border border-gray-100 rounded-2xl px-4 py-3 mb-2 card-ios" style={itemEditando?.id === item.id ? { borderLeft: '3px solid var(--color-vehiculos)' } : undefined}>
                   {renderItem(item)}
                 </div>
               ))}
@@ -334,7 +334,7 @@ export default function TabVehiculos({ hogarId, userId, esAdmin }) {
                   </div>
                 </div>
               ) : (
-                <button onClick={() => { setMostrarForm(true); setFormData({}); setItemEditando(null); }} className="w-full py-3 mt-1 border border-dashed border-gray-300 rounded-xl text-sm text-gray-400 hover:border-gray-400 hover:text-gray-500 transition-colors">
+                <button onClick={() => { setMostrarForm(true); setFormData({}); setItemEditando(null); }} className="w-full py-3 mt-1 rounded-xl text-sm font-medium text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--color-vehiculos)' }}>
                   + Agregar
                 </button>
               )}
@@ -360,6 +360,7 @@ export default function TabVehiculos({ hogarId, userId, esAdmin }) {
 
   return (
     <div className="p-4">
+      <div className="text-sm font-bold mb-3" style={{ color: 'var(--color-vehiculos)' }}>🚗 Vehículos</div>
       {cargando ? (
         <div className="text-center py-10 text-sm text-gray-400">Cargando...</div>
       ) : (

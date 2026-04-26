@@ -263,7 +263,7 @@ export default function TabEquipos({ hogarId, userId, esAdmin }) {
                 <div className="text-center py-8 text-sm text-gray-400">Sin registros aún</div>
               )}
               {items.map(item => (
-                <div key={item.id} className="bg-white border border-gray-100 rounded-xl px-4 py-3 mb-2">
+                <div key={item.id} className="bg-white border border-gray-100 rounded-2xl px-4 py-3 mb-2 card-ios" style={itemEditando?.id === item.id ? { borderLeft: '3px solid var(--color-equipos)' } : undefined}>
                   {renderItem(item)}
                 </div>
               ))}
@@ -275,12 +275,12 @@ export default function TabEquipos({ hogarId, userId, esAdmin }) {
                   {renderForm()}
                   {errorForm && <p className="text-xs text-red-600 mt-3 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{errorForm}</p>}
                   <div className="flex gap-2 mt-4">
-                    <button onClick={cerrarForm} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Cancelar</button>
+                    <button onClick={cerrarForm} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">Cancelar</button>
                     <button onClick={handleGuardarItem} className="flex-1 py-2.5 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--color-equipos)' }}>{itemEditando ? 'Guardar cambios' : 'Guardar'}</button>
                   </div>
                 </div>
               ) : (
-                <button onClick={() => { setMostrarForm(true); setFormData({}); setItemEditando(null); }} className="w-full py-3 mt-1 border border-dashed border-gray-300 rounded-xl text-sm text-gray-400 hover:border-gray-400 hover:text-gray-500 transition-colors">
+                <button onClick={() => { setMostrarForm(true); setFormData({}); setItemEditando(null); }} className="w-full py-3 mt-1 rounded-xl text-sm font-medium text-white hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--color-equipos)' }}>
                   + Agregar registro
                 </button>
               )}
@@ -306,6 +306,7 @@ export default function TabEquipos({ hogarId, userId, esAdmin }) {
 
   return (
     <div className="p-4">
+      <div className="text-sm font-bold mb-3" style={{ color: 'var(--color-equipos)' }}>🔧 Equipos</div>
       {cargando ? (
         <div className="text-center py-10 text-sm text-gray-400">Cargando...</div>
       ) : (
