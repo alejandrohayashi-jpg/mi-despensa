@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeScanType } from 'html5-qrcode';
 
 export default function BarcodeScanner({ onResult, onCerrar }) {
   const scannerRef = useRef(null);
@@ -14,24 +14,32 @@ export default function BarcodeScanner({ onResult, onCerrar }) {
     const html5QrCode = new Html5Qrcode(containerId);
     scannerRef.current = html5QrCode;
 
-    Html5Qrcode.getCameras()
-      .then(cameras => {
-        if (!cameras || cameras.length === 0) {
-          onCerrarRef.current();
-          return;
-        }
-        const cam = cameras.find(c => /back|rear|environment/i.test(c.label)) || cameras[cameras.length - 1];
-        html5QrCode.start(
-          cam.id,
-          { fps: 10, qrbox: { width: 250, height: 150 } },
-          (decodedText) => {
-            html5QrCode.stop().catch(() => {});
-            onResultRef.current(decodedText);
-          },
-          () => {}
-        ).catch(() => onCerrarRef.current());
-      })
-      .catch(() => onCerrarRef.current());
+    const config = {
+      fps: 10,
+      qrbox: { width: 280, height: 120 },
+      aspectRatio: 1.7777778,
+      supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+      experimentalFeatures: {
+        useBarCodeDetectorIfSupported: true,
+      },
+      videoConstraints: {
+        facingMode: 'environment',
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        focusMode: 'continuous',
+        advanced: [{ focusMode: 'continuous' }],
+      },
+    };
+
+    html5QrCode.start(
+      { facingMode: 'environment' },
+      config,
+      (decodedText) => {
+        html5QrCode.stop().catch(() => {});
+        onResultRef.current(decodedText);
+      },
+      () => {}
+    ).catch(() => onCerrarRef.current());
 
     return () => {
       if (scannerRef.current) {
@@ -47,7 +55,10 @@ export default function BarcodeScanner({ onResult, onCerrar }) {
           <h3 className="text-sm font-semibold text-gray-900">Escanear código de barras</h3>
           <button onClick={onCerrar} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
         </div>
-        <div id={containerId} className="w-full" style={{ minHeight: 260 }} />
+        <div
+          id={containerId}
+          style={{ width: '100%', height: 300 }}
+        />
         <p className="text-xs text-gray-400 text-center py-3 px-4">
           Apunta la cámara al código de barras del producto
         </p>
