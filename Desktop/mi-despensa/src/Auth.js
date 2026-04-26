@@ -146,7 +146,7 @@ export default function Auth() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 font-sans">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="text-4xl mb-3 w-16 h-16 flex items-center justify-center rounded-2xl mx-auto" style={{ backgroundColor: 'var(--color-alimentos)', opacity: 0.9 }}>🏠</div>
+          <img src="/icon-192.png" alt="MiHogar" style={{ width: 80, height: 80, borderRadius: 18 }} className="mx-auto mb-3" />
           <h1 className="text-xl font-bold text-gray-900 tracking-tight mt-3">MiHogar</h1>
           <p className="text-sm text-gray-400 mt-1">Gestión del hogar</p>
         </div>
