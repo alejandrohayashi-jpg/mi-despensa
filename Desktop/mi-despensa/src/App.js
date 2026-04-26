@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabase';
 import Auth from './Auth';
+import BarcodeScanner from './BarcodeScanner';
 import TabInicio from './TabInicio';
 import TabPersonas from './TabPersonas';
 import TabVehiculos from './TabVehiculos';
@@ -287,14 +288,54 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos, tab
           modo_consumo: productoEditar.modo_consumo || 'manual',
         }
       : {
-          nombre: '', categoria: '', cantidad: '', unidad: 'un.', vencimiento: '',
+          nombre: '', categoria: '', cantidad: '1', unidad: 'un.', vencimiento: '',
           destino: destinos[0]?.nombre || 'Casa General',
           ubicacion: tab === 'despensa' ? 'despensa' : 'refrigerador',
           frecuencia_consumo: '', unidad_consumo: 'unidad/día', modo_consumo: 'manual',
         }
   );
 
+  const [escaneando, setEscaneando] = useState(false);
+  const [buscandoCodigo, setBuscandoCodigo] = useState(false);
+  const [mensajeEscaneo, setMensajeEscaneo] = useState('');
+
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleScanResult = async (barcode) => {
+    setEscaneando(false);
+    setBuscandoCodigo(true);
+    setMensajeEscaneo('');
+    try {
+      const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+      const json = await res.json();
+      if (json.status === 1 && json.product) {
+        const p = json.product;
+        const nombre = p.product_name_es || p.product_name || p.abbreviated_product_name || '';
+        const categoriaRaw = (p.categories_tags?.[0] || '').replace('en:', '').toLowerCase();
+        const categoriaMap = {
+          dairies: 'Lácteos', milks: 'Lácteos', cheeses: 'Lácteos', yogurts: 'Lácteos',
+          beverages: 'Bebidas', waters: 'Bebidas', juices: 'Bebidas',
+          meats: 'Carnes', fish: 'Carnes', seafoods: 'Carnes',
+          vegetables: 'Verduras', fruits: 'Frutas',
+          pastas: 'Pastas', noodles: 'Pastas',
+          cereals: 'Cereales', breads: 'Cereales',
+          canned: 'Enlatados', snacks: 'Snacks',
+        };
+        const categoria = Object.entries(categoriaMap).find(([k]) => categoriaRaw.includes(k))?.[1] || '';
+        setForm(prev => ({
+          ...prev,
+          nombre: nombre || prev.nombre,
+          categoria: categoria || prev.categoria,
+        }));
+        setMensajeEscaneo(nombre ? `✅ Producto encontrado: ${nombre}` : '✅ Código leído. Completa los datos.');
+      } else {
+        setMensajeEscaneo('Producto no encontrado. Completa los datos manualmente.');
+      }
+    } catch {
+      setMensajeEscaneo('Error al buscar el producto. Completa los datos manualmente.');
+    }
+    setBuscandoCodigo(false);
+  };
 
   const handleGuardar = () => {
     if (!form.nombre || !form.categoria || !form.cantidad || !form.vencimiento) {
@@ -320,6 +361,20 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos, tab
           <button onClick={onCerrar} className="text-gray-400 hover:text-gray-600 text-xl leading-none transition-colors">✕</button>
         </div>
         <div className="px-6 pb-2 space-y-4">
+          <button
+            type="button"
+            onClick={() => { setMensajeEscaneo(''); setEscaneando(true); }}
+            disabled={buscandoCodigo}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ backgroundColor: 'var(--color-alimentos)' }}
+          >
+            {buscandoCodigo ? '🔍 Buscando producto...' : '📷 Escanear código de barras'}
+          </button>
+          {mensajeEscaneo && (
+            <p className={`text-xs mt-1 ${mensajeEscaneo.startsWith('✅') ? 'text-green-600' : 'text-amber-600'}`}>
+              {mensajeEscaneo}
+            </p>
+          )}
           <div>
             <label className={labelCls}>Nombre del producto</label>
             <input name="nombre" value={form.nombre} onChange={handleChange} placeholder="Ej: Leche entera" className={inputCls} />
@@ -384,7 +439,26 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos, tab
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>Cantidad</label>
-              <input name="cantidad" type="number" value={form.cantidad} onChange={handleChange} placeholder="Ej: 3" className={inputCls} />
+              <div className="flex items-center mt-1 border border-gray-200 rounded-xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setForm(prev => ({ ...prev, cantidad: String(Math.max(0, Number(prev.cantidad) - 1)) }))}
+                  className="px-3 py-2.5 text-gray-500 hover:bg-gray-100 text-base font-medium transition-colors"
+                >−</button>
+                <input
+                  name="cantidad"
+                  type="number"
+                  value={form.cantidad}
+                  onChange={handleChange}
+                  className="flex-1 py-2.5 text-sm text-center text-gray-900 focus:outline-none bg-transparent min-w-0"
+                  style={{ MozAppearance: 'textfield' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setForm(prev => ({ ...prev, cantidad: String(Number(prev.cantidad) + 1) }))}
+                  className="px-3 py-2.5 text-gray-500 hover:bg-gray-100 text-base font-medium transition-colors"
+                >+</button>
+              </div>
             </div>
             <div>
               <label className={labelCls}>Unidad</label>
@@ -464,6 +538,12 @@ function FormularioProducto({ onGuardar, onCerrar, productoEditar, destinos, tab
           </button>
         </div>
       </div>
+      {escaneando && (
+        <BarcodeScanner
+          onResult={handleScanResult}
+          onCerrar={() => setEscaneando(false)}
+        />
+      )}
     </div>
   );
 }
