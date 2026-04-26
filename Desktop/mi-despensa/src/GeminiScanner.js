@@ -49,7 +49,7 @@ export default function GeminiScanner({ destinos, tab, onConfirmar, onCerrar }) 
       }
 
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
       const base64 = await imageFileToBase64(file);
       const result = await model.generateContent([
