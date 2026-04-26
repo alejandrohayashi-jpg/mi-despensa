@@ -138,59 +138,139 @@ function ModalAlerta({ titulo, productos, onCerrar, onEliminar, onEditar }) {
   );
 }
 
-function ModalDestino({ hogarId, onCerrar, onGuardado }) {
-  const [nombre, setNombre] = useState('');
-  const [emoji, setEmoji] = useState('🏠');
+function ModalGestionarDestinos({ hogarId, destinos, productos, onCerrar, onActualizado }) {
+  const [modo, setModo] = useState('lista');
+  const [form, setForm] = useState({ nombre: '', emoji: '🏠' });
+  const [editando, setEditando] = useState(null);
+  const [confirmarEliminar, setConfirmarEliminar] = useState(null);
 
-  const handleGuardar = async () => {
-    if (!nombre) return;
-    await supabase.from('destinos').insert([{ hogar_id: hogarId, nombre, emoji }]);
-    onGuardado();
-    onCerrar();
+  const labelCls = 'block text-xs font-medium text-gray-500 uppercase tracking-wide';
+  const inputCls = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1';
+
+  const contarProductos = (nombre) => productos.filter(p => p.destino === nombre).length;
+  const esCasaGeneral = (d) => d.nombre === 'Casa General';
+
+  const abrirEditar = (d) => {
+    setEditando(d);
+    setForm({ nombre: d.nombre, emoji: d.emoji || '🏠' });
+    setModo('editar');
   };
 
+  const abrirAgregar = () => {
+    setEditando(null);
+    setForm({ nombre: '', emoji: '🏠' });
+    setModo('agregar');
+  };
+
+  const handleGuardar = async () => {
+    if (!form.nombre.trim()) return;
+    if (modo === 'editar' && editando) {
+      await supabase.from('destinos')
+        .update({ nombre: form.nombre.trim(), emoji: form.emoji })
+        .eq('id', editando.id);
+      if (editando.nombre !== form.nombre.trim()) {
+        await supabase.from('productos')
+          .update({ destino: form.nombre.trim() })
+          .eq('hogar_id', hogarId)
+          .eq('destino', editando.nombre);
+      }
+    } else {
+      await supabase.from('destinos')
+        .insert([{ hogar_id: hogarId, nombre: form.nombre.trim(), emoji: form.emoji }]);
+    }
+    setModo('lista');
+    setForm({ nombre: '', emoji: '🏠' });
+    setEditando(null);
+    onActualizado();
+  };
+
+  const handleEliminarConfirmado = async () => {
+    const d = confirmarEliminar;
+    await supabase.from('productos').delete().eq('hogar_id', hogarId).eq('destino', d.nombre);
+    await supabase.from('destinos').delete().eq('id', d.id);
+    setConfirmarEliminar(null);
+    onActualizado();
+  };
+
+  const n = confirmarEliminar ? contarProductos(confirmarEliminar.nombre) : 0;
+
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl p-6">
-        <div className="flex justify-between items-center mb-5">
-          <h2 className="text-base font-semibold text-gray-900">Nuevo destino</h2>
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center">
+      <div className="bg-white w-full max-w-xl rounded-t-2xl max-h-[85vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-5 pb-4 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-gray-900">
+            {modo === 'lista' ? 'Destinos' : modo === 'agregar' ? 'Nuevo destino' : 'Editar destino'}
+          </h2>
           <button onClick={onCerrar} className="text-gray-400 hover:text-gray-600 text-xl leading-none transition-colors">✕</button>
         </div>
-        <div className="mb-4">
-          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Nombre</label>
-          <input
-            value={nombre}
-            onChange={e => setNombre(e.target.value)}
-            placeholder="Ej: Agustín"
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1"
-          />
-        </div>
-        <div className="mb-6">
-          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Emoji</label>
-          <div className="flex flex-wrap gap-2">
-            {EMOJIS.map(e => (
-              <button
-                key={e}
-                onClick={() => setEmoji(e)}
-                className={`w-9 h-9 text-lg rounded-xl transition-colors ${
-                  emoji === e
-                    ? 'border-2 border-gray-900 bg-gray-100'
-                    : 'border border-gray-200 bg-white hover:bg-gray-50'
-                }`}
-              >
-                {e}
-              </button>
-            ))}
+
+        {confirmarEliminar && (
+          <div className="m-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <p className="text-sm text-red-800 mb-3">
+              {n > 0
+                ? `"${confirmarEliminar.nombre}" tiene ${n} alimento${n !== 1 ? 's' : ''} asociado${n !== 1 ? 's' : ''}. Todos se eliminarán junto con el destino. ¿Confirmar?`
+                : `¿Eliminar el destino "${confirmarEliminar.nombre}"?`}
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmarEliminar(null)} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">Cancelar</button>
+              <button onClick={handleEliminarConfirmado} className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition-colors">Eliminar</button>
+            </div>
           </div>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={onCerrar} className="flex-1 py-2.5 px-4 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
-            Cancelar
-          </button>
-          <button onClick={handleGuardar} className="flex-1 py-2.5 px-4 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--color-alimentos)' }}>
-            Guardar
-          </button>
-        </div>
+        )}
+
+        {modo === 'lista' && !confirmarEliminar && (
+          <div className="p-4 space-y-2">
+            {destinos.map(d => (
+              <div key={d.id} className="flex items-center gap-2 bg-white border border-gray-100 rounded-2xl px-4 py-3 card-ios">
+                <span className="text-lg">{d.emoji}</span>
+                <span className="flex-1 text-sm font-medium text-gray-900">{d.nombre}</span>
+                {esCasaGeneral(d)
+                  ? <span className="text-xs text-gray-300 mr-1">🔒</span>
+                  : <span className="text-xs text-gray-400 mr-2">{contarProductos(d.nombre)} alimentos</span>
+                }
+                <button onClick={() => abrirEditar(d)} className="text-gray-300 hover:text-gray-500 text-sm p-1 transition-colors">✏️</button>
+                {!esCasaGeneral(d) && (
+                  <button onClick={() => setConfirmarEliminar(d)} className="text-gray-300 hover:text-red-400 text-base p-1 transition-colors">✕</button>
+                )}
+              </div>
+            ))}
+            <button
+              onClick={abrirAgregar}
+              className="w-full py-3 mt-1 rounded-xl text-sm font-medium text-white hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: 'var(--color-alimentos)' }}
+            >
+              + Nuevo destino
+            </button>
+          </div>
+        )}
+
+        {(modo === 'agregar' || modo === 'editar') && !confirmarEliminar && (
+          <div className="p-5 space-y-4">
+            <div>
+              <label className={labelCls}>Nombre</label>
+              <input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} placeholder="Ej: Agustín" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Emoji</label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {EMOJIS.map(e => (
+                  <button key={e} onClick={() => setForm({ ...form, emoji: e })}
+                    className={`w-9 h-9 text-lg rounded-xl transition-colors ${form.emoji === e ? 'border-2 border-gray-900 bg-gray-100' : 'border border-gray-200 bg-white hover:bg-gray-50'}`}>
+                    {e}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => { setModo('lista'); setEditando(null); }} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
+                ← Volver
+              </button>
+              <button onClick={handleGuardar} className="flex-1 py-2.5 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--color-alimentos)' }}>
+                {modo === 'editar' ? 'Guardar cambios' : 'Crear destino'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -863,7 +943,7 @@ function App() {
               onClick={() => setMostrarModalDestino(true)}
               className="px-3 py-1.5 rounded-full text-xs font-medium text-gray-400 border border-dashed border-gray-300 hover:border-gray-400 whitespace-nowrap transition-colors"
             >
-              + Agregar
+              ✏️ Gestionar
             </button>
           </div>
 
@@ -1072,10 +1152,12 @@ function App() {
         />
       )}
       {mostrarModalDestino && (
-        <ModalDestino
+        <ModalGestionarDestinos
           hogarId={hogarId}
+          destinos={destinos}
+          productos={productos}
           onCerrar={() => setMostrarModalDestino(false)}
-          onGuardado={() => cargarDestinos()}
+          onActualizado={() => { cargarDestinos(); cargarProductos(); }}
         />
       )}
       {modalActivo === 'historial' && (
