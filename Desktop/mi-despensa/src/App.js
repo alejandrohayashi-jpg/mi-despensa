@@ -861,14 +861,22 @@ function App() {
 
   const handleGuardarMultiple = async (lista) => {
     for (const producto of lista) {
+      const payload = {
+        ...producto,
+        hogar_id: hogarId,
+        vencimiento: producto.vencimiento || null,
+        cantidad: Number(producto.cantidad) || 1,
+        unidad: producto.unidad || 'un.',
+        categoria: producto.categoria || 'Otros',
+      };
       const { data: nuevo } = await supabase
         .from('productos')
-        .insert([{ ...producto, hogar_id: hogarId }])
+        .insert([payload])
         .select()
         .single();
       await registrarHistorial(
-        nuevo || { id: null, nombre: producto.nombre },
-        'agregado', null, producto.cantidad, 'Agregado por IA',
+        nuevo || { id: null, nombre: payload.nombre },
+        'agregado', null, payload.cantidad, 'Agregado por IA',
       );
     }
     cargarProductos();

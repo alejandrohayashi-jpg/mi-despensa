@@ -1,17 +1,20 @@
 import React, { useRef, useState } from 'react';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+const CATEGORIAS_VALIDAS = ['Lácteos', 'Verduras', 'Frutas', 'Carnes', 'Enlatados', 'Pastas', 'Cereales', 'Bebidas', 'Snacks', 'Alimento mascotas', 'Otros'];
+
 const PROMPT = `Analiza esta imagen y detecta todos los productos alimenticios que ves.
 Para cada producto retorna SOLO un JSON array con este formato exacto, sin texto adicional:
 [
   {
     "nombre": "Leche Entera",
     "cantidad": 2,
-    "unidad": "L",
+    "unidad": "un.",
     "categoria": "Lácteos"
   }
 ]
-Las categorías posibles son: Lácteos, Carnes, Verduras, Frutas, Bebidas, Snacks, Congelados, Conservas, Panadería, Limpieza, Higiene, Otros.
+Las categorías posibles son EXACTAMENTE estas (usa solo una de estas): Lácteos, Verduras, Frutas, Carnes, Enlatados, Pastas, Cereales, Bebidas, Snacks, Alimento mascotas, Otros.
+La unidad debe ser una de: un., kg., g., lt., ml., pkg.
 Si no detectas productos alimenticios retorna: []`;
 
 async function imageFileToBase64(file) {
@@ -68,7 +71,13 @@ export default function GeminiScanner({ destinos, tab, onConfirmar, onCerrar }) 
         return;
       }
 
-      setProductos(detectados.map((p, i) => ({ ...p, _id: i, cantidad: String(p.cantidad ?? 1) })));
+      setProductos(detectados.map((p, i) => ({
+        ...p,
+        _id: i,
+        cantidad: String(p.cantidad ?? 1),
+        unidad: p.unidad || 'un.',
+        categoria: CATEGORIAS_VALIDAS.includes(p.categoria) ? p.categoria : 'Otros',
+      })));
       setVencimientos({});
       setEstado('confirmando');
     } catch (err) {
@@ -105,7 +114,7 @@ export default function GeminiScanner({ destinos, tab, onConfirmar, onCerrar }) 
       cantidad: Number(p.cantidad) || 1,
       unidad: p.unidad || 'un.',
       categoria: p.categoria || 'Otros',
-      vencimiento: vencimientos[p._id] || '',
+      vencimiento: vencimientos[p._id] || null,
     }));
     onConfirmar(lista);
   };
@@ -228,7 +237,7 @@ export default function GeminiScanner({ destinos, tab, onConfirmar, onCerrar }) 
                     </div>
                     <div className="flex items-center gap-2">
                       {/* Stepper cantidad */}
-                      <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden flex-shrink-0">
                         <button type="button" onClick={() => handleCantidadChange(p._id, -1)} className="px-2.5 py-1.5 text-gray-500 hover:bg-gray-100 text-sm font-medium transition-colors">−</button>
                         <input
                           type="number"
@@ -239,14 +248,20 @@ export default function GeminiScanner({ destinos, tab, onConfirmar, onCerrar }) 
                         />
                         <button type="button" onClick={() => handleCantidadChange(p._id, 1)} className="px-2.5 py-1.5 text-gray-500 hover:bg-gray-100 text-sm font-medium transition-colors">+</button>
                       </div>
-                      <span className="text-xs text-gray-400">{p.unidad}</span>
-                      {/* Vencimiento */}
+                      <span className="text-xs text-gray-400 flex-shrink-0">{p.unidad}</span>
+                    </div>
+                    {/* Vencimiento — requerido */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">
+                        Vencimiento <span className="text-red-400">*</span>
+                      </label>
                       <input
                         type="date"
                         value={vencimientos[p._id] || ''}
                         onChange={e => setVencimientos(prev => ({ ...prev, [p._id]: e.target.value }))}
-                        className="flex-1 px-2 py-1.5 border border-gray-200 rounded-xl text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition"
-                        placeholder="Vencimiento"
+                        className={`w-full px-2 py-1.5 border rounded-xl text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition ${
+                          !vencimientos[p._id] ? 'border-amber-300 bg-amber-50' : 'border-gray-200'
+                        }`}
                       />
                     </div>
                   </div>
