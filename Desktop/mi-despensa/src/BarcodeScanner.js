@@ -4,8 +4,12 @@ import { Html5Qrcode } from 'html5-qrcode';
 export default function BarcodeScanner({ onResult, onCerrar }) {
   const scannerRef = useRef(null);
   const containerId = 'barcode-scanner-container';
+  const onResultRef = useRef(onResult);
+  const onCerrarRef = useRef(onCerrar);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { onResultRef.current = onResult; }, [onResult]);
+  useEffect(() => { onCerrarRef.current = onCerrar; }, [onCerrar]);
+
   useEffect(() => {
     const html5QrCode = new Html5Qrcode(containerId);
     scannerRef.current = html5QrCode;
@@ -13,22 +17,21 @@ export default function BarcodeScanner({ onResult, onCerrar }) {
     Html5Qrcode.getCameras()
       .then(cameras => {
         if (!cameras || cameras.length === 0) {
-          onCerrar();
+          onCerrarRef.current();
           return;
         }
-        // Prefer back camera
         const cam = cameras.find(c => /back|rear|environment/i.test(c.label)) || cameras[cameras.length - 1];
         html5QrCode.start(
           cam.id,
           { fps: 10, qrbox: { width: 250, height: 150 } },
           (decodedText) => {
             html5QrCode.stop().catch(() => {});
-            onResult(decodedText);
+            onResultRef.current(decodedText);
           },
           () => {}
-        ).catch(() => onCerrar());
+        ).catch(() => onCerrarRef.current());
       })
-      .catch(() => onCerrar());
+      .catch(() => onCerrarRef.current());
 
     return () => {
       if (scannerRef.current) {
