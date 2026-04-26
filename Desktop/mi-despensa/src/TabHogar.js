@@ -12,6 +12,17 @@ export default function TabHogar({
   const [codigo, setCodigo] = useState(codigoInicial);
   const [mensaje, setMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [diasNotif, setDiasNotif] = useState(3);
+
+  React.useEffect(() => {
+    supabase.from('hogares').select('notification_days_before').eq('id', hogarId).single()
+      .then(({ data }) => { if (data?.notification_days_before) setDiasNotif(data.notification_days_before); });
+  }, [hogarId]);
+
+  const handleCambiarDiasNotif = async (dias) => {
+    setDiasNotif(dias);
+    await supabase.from('hogares').update({ notification_days_before: dias }).eq('id', hogarId);
+  };
 
   const inputCls = 'w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition mt-1';
   const labelCls = 'block text-xs font-medium text-gray-500 uppercase tracking-wide';
@@ -108,6 +119,33 @@ export default function TabHogar({
           )}
         </div>
       </section>
+
+      {esAdmin && (
+        <section>
+          <div className={secTitle}>⏰ Notificaciones</div>
+          <div className="bg-white border border-gray-100 rounded-2xl p-4 card-ios">
+            <label className={labelCls}>Alertar con anticipación</label>
+            <p className="text-xs text-gray-400 mt-1 mb-3">Días antes de que venza un producto, cita o mantención</p>
+            <div className="flex gap-2">
+              {[1, 3, 7].map(d => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => handleCambiarDiasNotif(d)}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                    diasNotif === d
+                      ? 'text-white'
+                      : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+                  }`}
+                  style={diasNotif === d ? { backgroundColor: 'var(--color-hogar)' } : undefined}
+                >
+                  {d} día{d > 1 ? 's' : ''}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section>
         <div className={secTitle}>⚙️ Cuenta</div>
