@@ -110,8 +110,6 @@ export default function GeminiScanner({ destinos, tab, onConfirmar, onCerrar }) 
     onConfirmar(lista);
   };
 
-  const inputCls = 'w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition';
-
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-[60] px-0">
       <div className="bg-white rounded-t-2xl w-full max-w-md max-h-[92vh] overflow-y-auto shadow-2xl">
