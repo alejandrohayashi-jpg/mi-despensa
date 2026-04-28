@@ -706,13 +706,14 @@ function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
-    if (session) cargarHogar();
+    if (session?.user?.id) cargarHogar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
+  }, [session?.user?.id]);
 
   const cargarHogar = async () => {
     const { data, error } = await supabase

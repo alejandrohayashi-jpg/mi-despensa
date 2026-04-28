@@ -84,13 +84,14 @@ export default function TabPersonas({ hogarId, userId, esAdmin }) {
       fecha_nac: formPersona.fecha_nac || null,
     };
     if (personaEditando) {
-      await supabase.from('personas').update(datos).eq('id', personaEditando.id);
-      // Actualizar personaActiva si estamos editando la que está abierta
+      const { error } = await supabase.from('personas').update(datos).eq('id', personaEditando.id);
+      if (error) { alert('Error al guardar: ' + error.message); return; }
       if (personaActiva?.id === personaEditando.id) {
         setPersonaActiva(prev => ({ ...prev, ...datos }));
       }
     } else {
-      await supabase.from('personas').insert([{ hogar_id: hogarId, ...datos }]);
+      const { error } = await supabase.from('personas').insert([{ hogar_id: hogarId, ...datos }]);
+      if (error) { alert('Error al guardar: ' + error.message); return; }
     }
     cerrarFormPersona();
     cargarPersonas();
