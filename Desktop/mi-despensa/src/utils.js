@@ -32,7 +32,8 @@ export function formatearFechaHora(fecha) {
 }
 
 // Calcula y formatea la edad a partir de fecha de nacimiento.
-// Para mascotas muestra meses si < 12, para humanos solo años.
+// Mascotas: muestra solo meses si < 12, luego años y meses.
+// Humanos: muestra años y meses siempre.
 export function calcularEdad(fechaNac, tipo) {
   if (!fechaNac) return null;
   const hoy = new Date();
@@ -42,8 +43,9 @@ export function calcularEdad(fechaNac, tipo) {
   const months = hoy.getMonth() - nac.getMonth();
   const totalMonths = years * 12 + months;
   if (tipo === 'mascota' && totalMonths < 12) return `${totalMonths} meses`;
-  if (tipo === 'mascota') return `${Math.floor(totalMonths / 12)} años y ${totalMonths % 12} meses`;
-  return `${years} años`;
+  const a = Math.floor(totalMonths / 12);
+  const m = totalMonths % 12;
+  return m > 0 ? `${a} años y ${m} meses` : `${a} años`;
 }
 
 // Devuelve personas con cumpleaños en los próximos `dias` días, ordenadas por proximidad.
